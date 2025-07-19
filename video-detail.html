@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIvoid - 動画詳細</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="status-bar">
+            <span class="time"></span>
+            <div class="status-icons">
+                <!-- <span class="signal">📶</span>
+                <span class="wifi">📶</span>
+                <span class="battery">🔋</span> -->
+            </div>
+        </div>
+        
+        <div class="detail-header">
+            <button class="back-btn" onclick="history.back()">←</button>
+        </div>
+        
+        <div class="video-detail-info">
+            <div class="video-thumbnail-placeholder green-character">
+                <div class="character-eyes">👀</div>
+            </div>
+            <div class="video-meta">
+                <h2>モーニングルーティン</h2>
+                <p>11万回視聴 1日前</p>
+            </div>
+        </div>
+        
+        <div class="comment-tabs">
+            <button class="tab-btn active" id="person-tab">本人返信コメント</button>
+            <button class="tab-btn" id="ai-tab">AI自動コメント</button>
+        </div>
+        
+        <div class="comments-container">
+            <div id="person-comments" class="comments-section active">
+                <div class="comment-item">
+                    <div class="comment-avatar">👤</div>
+                    <div class="comment-content">
+                        <div class="comment-meta">
+                            <span class="comment-time">10時間前</span>
+                            <span class="notification-dot"></span>
+                        </div>
+                        <p class="comment-text">いつも何時に起きてますか？</p>
+                        <button class="reply-btn">コメントに返信</button>
+                    </div>
+                </div>
+                
+                <div class="comment-item">
+                    <div class="comment-avatar">👤</div>
+                    <div class="comment-content">
+                        <div class="comment-meta">
+                            <span class="comment-time">10時間前</span>
+                            <span class="notification-dot"></span>
+                        </div>
+                        <p class="comment-text">そのメガネはどこの？</p>
+                        <button class="reply-btn">コメントに返信</button>
+                    </div>
+                </div>
+                
+                <div class="comment-item">
+                    <div class="comment-avatar">👤</div>
+                    <div class="comment-content">
+                        <div class="comment-meta">
+                            <span class="comment-time">11時間前</span>
+                            <span class="notification-dot"></span>
+                        </div>
+                        <p class="comment-text">カメラは何使ってますか？</p>
+                        <button class="reply-btn">コメントに返信</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="ai-comments" class="comments-section">
+                <div class="comment-item">
+                    <div class="comment-avatar">👤</div>
+                    <div class="comment-content">
+                        <div class="comment-meta">
+                            <span class="comment-time">3時間前</span>
+                            <span class="notification-dot"></span>
+                        </div>
+                        <p class="comment-text">あこがれます！</p>
+                        <div class="ai-reply">
+                            <div class="ai-badge">AI</div>
+                            <div class="ai-reply-text">ありがとうございます！</div>
+                            <button class="send-btn">✈️</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="comment-item">
+                    <div class="comment-avatar">👤</div>
+                    <div class="comment-content">
+                        <div class="comment-meta">
+                            <span class="comment-time">10時間前</span>
+                            <span class="notification-dot"></span>
+                        </div>
+                        <p class="comment-text">真似したい。理想の生活すぎる。</p>
+                        <div class="ai-reply">
+                            <div class="ai-badge">AI</div>
+                            <div class="ai-reply-text">ぜひ真似してください^^</div>
+                            <button class="send-btn">✈️</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="comment-item">
+                    <div class="comment-avatar">👤</div>
+                    <div class="comment-content">
+                        <div class="comment-meta">
+                            <span class="comment-time">23時間前</span>
+                            <span class="notification-dot"></span>
+                        </div>
+                        <p class="comment-text">めっちゃいい</p>
+                        <div class="ai-reply">
+                            <div class="ai-badge">AI</div>
+                            <div class="ai-reply-text">だろ！！</div>
+                            <button class="send-btn">✈️</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Reply Modal -->
+        <div id="reply-modal" class="reply-modal">
+            <div class="modal-content">
+                <div class="modal-comment">
+                    <div class="comment-avatar">👤</div>
+                    <div class="comment-content">
+                        <span class="comment-time" id="modal-time">10時間前</span>
+                        <p class="comment-text" id="modal-text">いつも何時に起きてますか？</p>
+                    </div>
+                </div>
+                <div class="reply-input-area">
+                    <textarea id="reply-textarea" placeholder="返信を入力..."></textarea>
+                    <button class="send-reply-btn">送信</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Success Modal -->
+        <div id="success-modal" class="success-modal">
+            <div class="success-message">送信しました</div>
+        </div>
+        
+        <nav class="bottom-nav">
+            <a href="home.html" class="nav-item">🏠</a>
+            <a href="messages.html" class="nav-item">✉️<span class="badge">1</span></a>
+            <a href="analytics.html" class="nav-item">📊</a>
+            <a href="settings.html" class="nav-item">⚙️</a>
+        </nav>
+        
+        <div class="home-indicator"></div>
+    </div>
+    
+    <script src="assets/js/clock.js"></script>
+    <script src="config.js"></script>
+    <script src="assets/js/youtube-api.js"></script>
+    <script src="assets/js/perspective-api.js"></script>
+    <script src="assets/js/api-setup.js"></script>
+    <script src="assets/js/video-detail-new.js"></script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIvoid - Settings</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="status-bar">
+            <span class="time"></span>
+            <div class="status-icons">
+                <!-- <span class="signal">📶</span>
+                <span class="wifi">📶</span>
+                <span class="battery">🔋</span> -->
+            </div>
+        </div>
+        
+        <div class="settings-content">
+            <div class="settings-section">
+                <h2 class="settings-section-title">アカウント設定</h2>
+                
+                <div class="settings-item">
+                    <span class="settings-label">ログアウト</span>
+                    <span class="settings-arrow">></span>
+                </div>
+                
+                <div class="settings-item">
+                    <span class="settings-label">アカウント連携（Youtube）</span>
+                    <span class="settings-arrow">></span>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h2 class="settings-section-title">通知設定</h2>
+                
+                <div class="settings-toggle-item">
+                    <span class="settings-label">通知のON/OFF</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="notifications" checked>
+                        <label for="notifications"></label>
+                    </div>
+                </div>
+                
+                <div class="settings-toggle-item">
+                    <span class="settings-label">本人対応コメント通知</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="person-comments" checked>
+                        <label for="person-comments"></label>
+                    </div>
+                </div>
+                
+                <div class="settings-toggle-item">
+                    <span class="settings-label">AI通知（要望・提案）</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="ai-notifications" checked>
+                        <label for="ai-notifications"></label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h2 class="settings-section-title">AI設定</h2>
+                
+                <div class="settings-toggle-item">
+                    <span class="settings-label">AI自動返信</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="ai-auto-reply" checked>
+                        <label for="ai-auto-reply"></label>
+                    </div>
+                </div>
+                
+                <div class="settings-toggle-item">
+                    <span class="settings-label">AI自動いいね</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="ai-auto-like" checked>
+                        <label for="ai-auto-like"></label>
+                    </div>
+                </div>
+                
+                <div class="settings-toggle-item">
+                    <span class="settings-label">本人対応返信通知</span>
+                    <div class="toggle-switch">
+                        <input type="checkbox" id="person-reply-notifications" checked>
+                        <label for="person-reply-notifications"></label>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="bottom-nav">
+            <a href="home.html" class="nav-item">🏠</a>
+            <a href="messages.html" class="nav-item">✉️<span class="badge">1</span></a>
+            <a href="analytics.html" class="nav-item">📊</a>
+            <a href="settings.html" class="nav-item active">⚙️</a>
+        </nav>
+        
+        <div class="home-indicator"></div>
+    </div>
+    
+    <script src="assets/js/clock.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

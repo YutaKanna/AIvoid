@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AIvoid - Messages</title>
+    <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <div class="status-bar">
+            <span class="time"></span>
+            <div class="status-icons">
+                <!-- <span class="signal">📶</span>
+                <span class="wifi">📶</span>
+                <span class="battery">🔋</span> -->
+            </div>
+        </div>
+        
+        <div class="header">
+            <div></div>
+            <h1 class="logo-small">AIvoid</h1>
+            <button class="btn-logout">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+            </button>
+        </div>
+        
+        <div class="content messages-content">
+            <div class="notification-list">
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <span class="notification-tag">【AI通知】</span>
+                        <span class="notification-time">3時間前</span>
+                        <span class="notification-badge">!</span>
+                    </div>
+                    <div class="video-thumbnail-container">
+                        <div class="video-thumbnail-placeholder green-character">
+                            <div class="character-eyes">👀</div>
+                        </div>
+                    </div>
+                    <p class="notification-text">この動画にいくつかの声が多数寄せられています。</p>
+                </div>
+                
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <span class="notification-tag">【お知らせ】</span>
+                        <span class="notification-time">10時間前</span>
+                    </div>
+                    <p class="notification-text">いつもAIvoidをご利用いただき、ありがとうございます。このたび、システムのメンテナンスにつき一部サーバーにつながりにくい場合がございます</p>
+                </div>
+                
+                <div class="notification-item">
+                    <div class="notification-header">
+                        <span class="notification-tag">【設定】</span>
+                        <span class="notification-time">1週間前</span>
+                    </div>
+                    <div class="video-thumbnail-container">
+                        <div class="video-thumbnail-placeholder yellow-character">
+                            <div class="character-body">🙋</div>
+                        </div>
+                    </div>
+                    <p class="notification-text">ジャンル未選択の動画があります。</p>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="bottom-nav">
+            <a href="home.html" class="nav-item">🏠</a>
+            <a href="messages.html" class="nav-item active">✉️<span class="badge">1</span></a>
+            <a href="analytics.html" class="nav-item">📊</a>
+            <a href="settings.html" class="nav-item">⚙️</a>
+        </nav>
+        
+        <div class="home-indicator"></div>
+    </div>
+    
+    <script src="assets/js/clock.js"></script>
+    <script src="assets/js/main.js"></script>
+</body>
+</html>

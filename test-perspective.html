@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perspective API テスト</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4A90E2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #357abd;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f5f5f5;
+            border-radius: 4px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background-color: #ffe6e6;
+            color: #cc0000;
+        }
+        .success {
+            background-color: #e6ffe6;
+            color: #006600;
+        }
+    </style>
+</head>
+<body>
+    <h1>Perspective API テスト</h1>
+    
+    <div class="test-section">
+        <h2>API設定確認</h2>
+        <button onclick="checkSetup()">設定状態を確認</button>
+        <div id="setup-result" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>コメント分析テスト</h2>
+        <p>以下のテキストエリアにコメントを入力して、毒性スコアを確認できます：</p>
+        
+        <label for="comment-input">テストコメント:</label>
+        <textarea id="comment-input" placeholder="ここにコメントを入力してください...">素晴らしい動画でした！</textarea>
+        
+        <button onclick="analyzeComment()">分析する</button>
+        <div id="analysis-result" class="result"></div>
+    </div>
+
+    <script src="config.js"></script>
+    <script src="assets/js/perspective-api.js"></script>
+    <script>
+        // 初期化
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadConfig();
+            checkSetup();
+        });
+
+        // 設定確認
+        function checkSetup() {
+            const youtubeKey = getYouTubeAPIKey();
+            const perspectiveKey = getPerspectiveAPIKey();
+            
+            const result = document.getElementById('setup-result');
+            
+            let status = '設定状態:\n';
+            status += `YouTube API: ${youtubeKey ? '✅ 設定済み' : '❌ 未設定'}\n`;
+            status += `Perspective API: ${perspectiveKey ? '✅ 設定済み' : '❌ 未設定'}\n`;
+            
+            if (!perspectiveKey) {
+                status += '\n⚠️ Perspective APIキーが設定されていません。\n';
+                status += '.envファイルにPERSPECTIVE_API_KEYを追加してサーバーを再起動してください。';
+                result.className = 'result error';
+            } else {
+                status += '\n✅ すべて設定済みです！';
+                result.className = 'result success';
+            }
+            
+            result.textContent = status;
+        }
+
+        // コメント分析
+        async function analyzeComment() {
+            const text = document.getElementById('comment-input').value.trim();
+            const result = document.getElementById('analysis-result');
+            
+            if (!text) {
+                result.textContent = '⚠️ コメントを入力してください。';
+                result.className = 'result error';
+                return;
+            }
+            
+            try {
+                result.textContent = '分析中...';
+                result.className = 'result';
+                
+                const analysis = await perspectiveAPI.analyzeComment(text);
+                
+                let output = `分析結果:\n`;
+                output += `テキスト: "${text}"\n`;
+                output += `毒性判定: ${analysis.isToxic ? '❌ 毒性あり' : '✅ 安全'}\n\n`;
+                
+                output += '詳細スコア:\n';
+                for (const [attribute, score] of Object.entries(analysis.scores || {})) {
+                    const percentage = Math.round(score * 100);
+                    const emoji = score > 0.7 ? '🔴' : score > 0.5 ? '🟡' : '🟢';
+                    output += `${emoji} ${attribute}: ${percentage}%\n`;
+                }
+                
+                result.textContent = output;
+                result.className = `result ${analysis.isToxic ? 'error' : 'success'}`;
+                
+            } catch (error) {
+                result.textContent = `❌ エラーが発生しました:\n${error.message}`;
+                result.className = 'result error';
+            }
+        }
+    </script>
+</body>
+</html>
