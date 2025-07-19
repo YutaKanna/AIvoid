@@ -895,12 +895,13 @@ input:focus {
     display: flex;
     gap: 15px;
     align-items: center;
+    
     border-bottom: 1px solid #eee;
 }
 
 .video-detail-info .video-thumbnail-placeholder {
     width: 120px;
-    height: 80px;
+    height: 65px;
     flex-shrink: 0;
 }
 
@@ -939,6 +940,7 @@ input:focus {
 .comments-container {
     background-color: white;
     padding-bottom: 100px;
+    min-height: 300px;
 }
 
 .comments-section {
@@ -1193,12 +1195,6 @@ input:focus {
     line-height: 1.4;
 }
 
-.toxic-comment {
-    opacity: 0.5;
-    border-left: 3px solid #ff4444;
-    padding-left: 12px;
-    margin-left: -12px;
-}
 
 .score-badges {
     display: flex;
@@ -1219,6 +1215,16 @@ input:focus {
     text-align: center;
     padding: 40px;
     color: #666;
+}
+
+.comment-loader-small {
+    padding: 20px;
+}
+
+.comment-loader-small .loader-spinner {
+    width: 24px;
+    height: 24px;
+    margin-bottom: 0;
 }
 
 .loader-spinner {
@@ -1254,4 +1260,187 @@ input:focus {
 #scroll-sentinel {
     height: 1px;
     visibility: hidden;
+}
+
+/* 有害コメント用スタイル */
+.toxic-comments-header {
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 16px;
+}
+
+.toxic-info h3 {
+    color: #856404;
+    font-size: 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.toxic-info p {
+    color: #856404;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.no-toxic-comments {
+    text-align: center;
+    padding: 40px;
+    background-color: #d4edda;
+    border: 1px solid #c3e6cb;
+    border-radius: 8px;
+    color: #155724;
+    font-size: 14px;
+}
+
+.toxic-comment {
+    border-left: 4px solid #ff4444;
+    background-color: #fff5f5;
+}
+
+.toxic-badge {
+    background-color: #ff4444;
+    color: white;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+}
+
+.toxic-warning {
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 6px;
+    padding: 12px;
+    margin: 8px 0;
+}
+
+.toxic-warning p {
+    font-size: 13px;
+    color: #991b1b;
+    margin-bottom: 8px;
+}
+
+.toxic-reason {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.highest-score {
+    background-color: #dc2626;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.toxic-content {
+    margin: 12px 0;
+}
+
+.toxic-content summary {
+    cursor: pointer;
+    color: #dc2626;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px;
+    background-color: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+}
+
+.toxic-content summary:hover {
+    background-color: #fde8e8;
+}
+
+.toxic-content[open] summary {
+    margin-bottom: 8px;
+}
+
+.detailed-score-badges {
+    display: grid;
+    gap: 8px;
+    margin-top: 12px;
+}
+
+.detailed-score-badge {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: #f9fafb;
+    border-radius: 6px;
+    font-size: 12px;
+}
+
+.score-label {
+    font-weight: 500;
+    color: #374151;
+}
+
+.score-value {
+    font-weight: 600;
+    color: #dc2626;
+}
+
+/* プログレスバー用スタイル */
+.analysis-progress {
+    padding: 16px 20px;
+    background-color: #f0f7ff;
+    border-bottom: 1px solid #e0e7ff;
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.progress-content {
+    max-width: 100%;
+}
+
+.progress-text {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #4338ca;
+    font-weight: 500;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 6px;
+    background-color: #e0e7ff;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background-color: #4338ca;
+    transition: width 0.3s ease;
+    border-radius: 3px;
+}
+
+.analysis-progress.fade-out {
+    animation: fadeOut 0.3s ease-out forwards;
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
 }

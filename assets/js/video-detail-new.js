@@ -3,12 +3,24 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentVideoId = null;
     let nextPageToken = null;
     let isLoading = false;
-    let currentTab = 'filtered'; // 'filtered' or 'all'
+    let currentTab = 'filtered'; // 'filtered' or 'toxic'
+    let allComments = [];
+    let filteredData = { safe: [], toxic: [], analysis: {} };
+    let isProcessingBackground = false;
+    let pendingComments = [];
     
     // 初期化
     initialize();
     
     async function initialize() {
+        // 設定を読み込む
+        try {
+            await loadConfig();
+            console.log('Config loaded successfully');
+        } catch (error) {
+            console.error('Failed to load config:', error);
+        }
+        
         // URLパラメータまたはlocalStorageから動画IDを取得
         const urlParams = new URLSearchParams(window.location.search);
         currentVideoId = urlParams.get('v') || localStorage.getItem('selectedVideoId');
@@ -34,30 +46,65 @@ document.addEventListener('DOMContentLoaded', function() {
     // 動画詳細情報を読み込む
     async function loadVideoDetails() {
         try {
+            console.log('Loading video details for ID:', currentVideoId);
             const videoDetails = await youtubeAPI.getVideoDetails(currentVideoId);
             
+            console.log('Video details loaded:', videoDetails);
+            
             // 動画情報を表示
-            document.querySelector('.video-meta h2').textContent = videoDetails.title;
-            document.querySelector('.video-meta p').textContent = 
-                `${videoDetails.viewCount}回視聴 ${videoDetails.publishedAt}`;
+            const titleElement = document.querySelector('.video-meta h2');
+            const viewCountElement = document.querySelector('.video-meta p');
+            
+            if (titleElement && videoDetails.title) {
+                titleElement.textContent = videoDetails.title;
+            }
+            
+            if (viewCountElement && videoDetails.viewCount && videoDetails.publishedAt) {
+                viewCountElement.textContent = 
+                    `${videoDetails.viewCount}回視聴 ${videoDetails.publishedAt}`;
+            }
             
             // サムネイルを更新
             const thumbnailContainer = document.querySelector('.video-thumbnail-placeholder');
-            thumbnailContainer.innerHTML = `
-                <img src="${videoDetails.thumbnail}" alt="${videoDetails.title}" style="width: 100%; height: 100%; object-fit: cover;">
-            `;
+            if (thumbnailContainer && videoDetails.thumbnail) {
+                // 背景色を設定してからサムネイルを表示
+                thumbnailContainer.style.backgroundColor = '#000';
+                thumbnailContainer.innerHTML = `
+                    <img src="${videoDetails.thumbnail}" alt="${videoDetails.title || ''}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 12px;">
+                `;
+            }
             
         } catch (error) {
             console.error('Failed to load video details:', error);
+            
+            // エラー時の表示
+            const titleElement = document.querySelector('.video-meta h2');
+            const viewCountElement = document.querySelector('.video-meta p');
+            
+            if (titleElement) {
+                titleElement.textContent = '動画情報を取得できませんでした';
+            }
+            
+            if (viewCountElement) {
+                viewCountElement.textContent = 'エラーが発生しました';
+            }
         }
     }
     
     // コメントを読み込む
-    async function loadComments(append = false) {
+    async function loadComments(append = false, quickLoad = false) {
         if (isLoading) return;
         
         isLoading = true;
-        showLoadingIndicator();
+        
+        // 初回読み込み時はクイックロードを有効化
+        if (!append && !quickLoad) {
+            quickLoad = true;
+        }
+        
+        if (!quickLoad || append) {
+            showLoadingIndicator();
+        }
         
         try {
             // YouTube APIでコメントを取得
@@ -69,14 +116,63 @@ document.addEventListener('DOMContentLoaded', function() {
             
             nextPageToken = result.nextPageToken;
             
-            // Perspective APIでフィルタリング
-            const filteredComments = await filterComments(result.comments);
+            // コメントデータを保存（重複を除外）
+            if (!append) {
+                allComments = result.comments;
+            } else {
+                // 既存のコメントIDのセットを作成
+                const existingIds = new Set(allComments.map(c => c.id));
+                // 新しいコメントのみを追加
+                const newComments = result.comments.filter(c => !existingIds.has(c.id));
+                allComments = allComments.concat(newComments);
+                console.log(`Added ${newComments.length} new comments, skipped ${result.comments.length - newComments.length} duplicates`);
+            }
+            
+            // クイックロード時は最初の5件のみ処理
+            let commentsToAnalyze = !append ? result.comments : 
+                result.comments.filter(c => !allComments.slice(0, -result.comments.length).some(existing => existing.id === c.id));
+            
+            if (quickLoad && !append && commentsToAnalyze.length > 2) {
+                // 最初の2件を即座に処理
+                const firstBatch = commentsToAnalyze.slice(0, 2);
+                pendingComments = commentsToAnalyze.slice(2);
+                commentsToAnalyze = firstBatch;
+                
+                console.log(`Quick loading: Processing first ${firstBatch.length} comments, ${pendingComments.length} pending`);
+                
+                // プログレス表示
+                showProgressIndicator(firstBatch.length, result.comments.length);
+            }
+            
+            const filteredComments = await filterComments(commentsToAnalyze);
+            
+            // フィルター結果を保存
+            if (!append) {
+                filteredData = filteredComments;
+            } else {
+                // 重複チェックしながら追加
+                const existingSafeIds = new Set(filteredData.safe.map(c => c.id));
+                const existingToxicIds = new Set(filteredData.toxic.map(c => c.id));
+                
+                filteredData.safe = filteredData.safe.concat(
+                    filteredComments.safe.filter(c => !existingSafeIds.has(c.id))
+                );
+                filteredData.toxic = filteredData.toxic.concat(
+                    filteredComments.toxic.filter(c => !existingToxicIds.has(c.id))
+                );
+                Object.assign(filteredData.analysis, filteredComments.analysis);
+            }
             
             // コメントを表示
             if (currentTab === 'filtered') {
-                displayFilteredComments(filteredComments.safe, append);
-            } else {
-                displayAllComments(result.comments, filteredComments.analysis, append);
+                displayFilteredComments(filteredData.safe, append);
+            } else if (currentTab === 'toxic') {
+                displayToxicComments(filteredData.toxic, filteredData.analysis, append);
+            }
+            
+            // バックグラウンド処理を開始
+            if (quickLoad && pendingComments.length > 0 && !isProcessingBackground) {
+                setTimeout(() => processBackgroundComments(), 100);
             }
             
         } catch (error) {
@@ -84,15 +180,69 @@ document.addEventListener('DOMContentLoaded', function() {
             showError('コメントの読み込みに失敗しました');
         } finally {
             isLoading = false;
-            hideLoadingIndicator();
+            if (!quickLoad || append) {
+                hideLoadingIndicator();
+            }
+        }
+    }
+    
+    // バックグラウンドでコメントを処理
+    async function processBackgroundComments() {
+        if (isProcessingBackground || pendingComments.length === 0) return;
+        
+        isProcessingBackground = true;
+        console.log(`Processing ${pendingComments.length} pending comments in background`);
+        
+        try {
+            // バッチ処理（3件ずつ）
+            while (pendingComments.length > 0) {
+                const batch = pendingComments.splice(0, 3);
+                const filteredBatch = await filterComments(batch);
+                
+                // フィルター結果を追加
+                const existingSafeIds = new Set(filteredData.safe.map(c => c.id));
+                const existingToxicIds = new Set(filteredData.toxic.map(c => c.id));
+                
+                filteredData.safe = filteredData.safe.concat(
+                    filteredBatch.safe.filter(c => !existingSafeIds.has(c.id))
+                );
+                filteredData.toxic = filteredData.toxic.concat(
+                    filteredBatch.toxic.filter(c => !existingToxicIds.has(c.id))
+                );
+                Object.assign(filteredData.analysis, filteredBatch.analysis);
+                
+                // 現在のタブに応じて表示を更新
+                if (currentTab === 'filtered') {
+                    displayFilteredComments(filteredBatch.safe, true);
+                } else if (currentTab === 'toxic') {
+                    displayToxicComments(filteredBatch.toxic, filteredData.analysis, true);
+                }
+                
+                // プログレス更新
+                updateProgressIndicator(allComments.length - pendingComments.length, allComments.length);
+                
+                // 次のバッチまで少し待機
+                if (pendingComments.length > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                }
+            }
+            
+            hideProgressIndicator();
+            console.log('Background processing completed');
+            
+        } catch (error) {
+            console.error('Error in background processing:', error);
+        } finally {
+            isProcessingBackground = false;
         }
     }
     
     // コメントをフィルタリング
     async function filterComments(comments) {
-        const perspectiveKey = localStorage.getItem('PERSPECTIVE_API_KEY');
+        const perspectiveKey = perspectiveAPI.getAPIKey();
         
         if (!perspectiveKey) {
+            console.warn('Perspective API key not found, treating all comments as safe');
             // Perspective APIキーがない場合は全て安全と判定
             return {
                 safe: comments,
@@ -101,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
         }
         
-        perspectiveAPI.setAPIKey(perspectiveKey);
+        console.log('Using Perspective API for comment filtering');
         
         const safe = [];
         const toxic = [];
@@ -109,15 +259,33 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // バッチ処理でコメントを分析
         for (const comment of comments) {
-            const result = await perspectiveAPI.analyzeComment(comment.textOriginal);
-            analysis[comment.id] = result;
-            
-            if (!result.isToxic) {
+            try {
+                console.log(`Analyzing comment: "${comment.textOriginal}"`);
+                const result = await perspectiveAPI.analyzeComment(comment.textOriginal);
+                analysis[comment.id] = result;
+                
+                console.log(`Comment analysis result:`, {
+                    text: comment.textOriginal,
+                    isToxic: result.isToxic,
+                    scores: result.scores,
+                    isJapanese: /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(comment.textOriginal)
+                });
+                
+                if (!result.isToxic) {
+                    safe.push(comment);
+                } else {
+                    toxic.push(comment);
+                    console.log(`Toxic comment found: "${comment.textOriginal}"`);
+                }
+            } catch (error) {
+                console.error(`Error analyzing comment "${comment.textOriginal}":`, error);
+                // エラーの場合は安全として扱う
                 safe.push(comment);
-            } else {
-                toxic.push(comment);
+                analysis[comment.id] = { isToxic: false, scores: {}, error: error.message };
             }
         }
+        
+        console.log(`Filtering complete: ${safe.length} safe, ${toxic.length} toxic out of ${comments.length} total comments`);
         
         return { safe, toxic, analysis };
     }
@@ -130,9 +298,19 @@ document.addEventListener('DOMContentLoaded', function() {
             container.innerHTML = '';
         }
         
+        // 既存のコメントIDを取得
+        const existingCommentIds = new Set(
+            Array.from(container.querySelectorAll('.comment-item'))
+                .map(el => el.dataset.commentId)
+                .filter(id => id)
+        );
+        
         comments.forEach(comment => {
-            const commentElement = createCommentElement(comment);
-            container.appendChild(commentElement);
+            if (!existingCommentIds.has(comment.id)) {
+                const commentElement = createCommentElement(comment);
+                commentElement.dataset.commentId = comment.id;
+                container.appendChild(commentElement);
+            }
         });
         
         if (comments.length === 0 && !append) {
@@ -140,17 +318,51 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // 全コメントを表示（毒性スコア付き）
-    function displayAllComments(comments, analysis, append = false) {
-        const container = document.getElementById('ai-comments');
+    
+    // 有害判定されたコメントを表示
+    function displayToxicComments(toxicComments, analysis, append = false) {
+        const container = document.getElementById('toxic-comments');
         
         if (!append) {
             container.innerHTML = '';
+            
+            // 全体の有害コメント数を取得（filteredData.toxicの総数）
+            const totalToxicCount = filteredData.toxic.length;
+            
+            // 0件の場合のみno-toxic-commentsを表示
+            if (totalToxicCount === 0) {
+                const noToxic = document.createElement('div');
+                noToxic.className = 'no-toxic-comments';
+                noToxic.innerHTML = '<p>✅ 有害と判定されたコメントはありません</p>';
+                container.appendChild(noToxic);
+                return;
+            }
+            
+            // ヘッダー情報を追加（全体の件数を表示）
+            const header = document.createElement('div');
+            header.className = 'toxic-comments-header';
+            header.innerHTML = `
+                <div class="toxic-info">
+                    <h3>⚠️ 有害判定されたコメント (${totalToxicCount}件)</h3>
+                    <p>Perspective APIにより有害と判定されたコメントです。表示には注意してください。</p>
+                </div>
+            `;
+            container.appendChild(header);
         }
         
-        comments.forEach(comment => {
-            const commentElement = createCommentElement(comment, analysis[comment.id]);
-            container.appendChild(commentElement);
+        // 既存のコメントIDを取得
+        const existingCommentIds = new Set(
+            Array.from(container.querySelectorAll('.comment-item'))
+                .map(el => el.dataset.commentId)
+                .filter(id => id)
+        );
+        
+        toxicComments.forEach(comment => {
+            if (!existingCommentIds.has(comment.id)) {
+                const commentElement = createToxicCommentElement(comment, analysis[comment.id]);
+                commentElement.dataset.commentId = comment.id;
+                container.appendChild(commentElement);
+            }
         });
     }
     
@@ -187,6 +399,42 @@ document.addEventListener('DOMContentLoaded', function() {
         return div;
     }
     
+    // 有害コメント要素を作成
+    function createToxicCommentElement(comment, analysisResult) {
+        const div = document.createElement('div');
+        div.className = 'comment-item toxic-comment';
+        
+        // 最も高いスコアを取得
+        const highestScore = Math.max(...Object.values(analysisResult.scores || {}));
+        const highestAttribute = Object.entries(analysisResult.scores || {})
+            .reduce((a, b) => a[1] > b[1] ? a : b)[0];
+        
+        div.innerHTML = `
+            <img src="${comment.authorProfileImageUrl}" alt="${comment.authorName}" class="comment-avatar">
+            <div class="comment-content">
+                <div class="comment-meta">
+                    <span class="comment-author">${comment.authorName}</span>
+                    <span class="comment-time">${comment.publishedAt}</span>
+                    <span class="toxic-badge">🚨 有害判定</span>
+                </div>
+                <div class="toxic-warning">
+                    <p><strong>⚠️ 注意:</strong> このコメントは以下の理由で有害と判定されました</p>
+                    <div class="toxic-reason">
+                        <span class="highest-score">${highestAttribute}: ${Math.round(highestScore * 100)}%</span>
+                    </div>
+                </div>
+                <details class="toxic-content">
+                    <summary>コメント内容を表示 (注意してください)</summary>
+                    <p class="comment-text">${comment.text}</p>
+                </details>
+                ${createDetailedScoreBadges(analysisResult.scores)}
+                ${comment.likeCount > 0 ? `<span class="comment-likes">👍 ${comment.likeCount}</span>` : ''}
+            </div>
+        `;
+        
+        return div;
+    }
+    
     // 毒性スコアバッジを作成
     function createScoreBadges(scores) {
         const badges = [];
@@ -199,6 +447,32 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         return badges.length > 0 ? `<div class="score-badges">${badges.join(' ')}</div>` : '';
+    }
+    
+    // 詳細な毒性スコアバッジを作成（有害コメント用）
+    function createDetailedScoreBadges(scores) {
+        const badges = [];
+        const attributeLabels = {
+            'TOXICITY': '毒性',
+            'SEVERE_TOXICITY': '重度毒性',
+            'INSULT': '侮辱',
+            'THREAT': '脅迫',
+            'IDENTITY_ATTACK': '個人攻撃'
+        };
+        
+        for (const [attribute, score] of Object.entries(scores)) {
+            const percentage = Math.round(score * 100);
+            const label = attributeLabels[attribute] || attribute;
+            const color = score > 0.7 ? '#ff4444' : score > 0.5 ? '#ff8800' : '#88aa88';
+            badges.push(`
+                <div class="detailed-score-badge" style="border-left: 4px solid ${color};">
+                    <span class="score-label">${label}</span>
+                    <span class="score-value">${percentage}%</span>
+                </div>
+            `);
+        }
+        
+        return badges.length > 0 ? `<div class="detailed-score-badges">${badges.join('')}</div>` : '';
     }
     
     // 返信の表示/非表示を切り替え
@@ -243,41 +517,46 @@ document.addEventListener('DOMContentLoaded', function() {
     function setupEventListeners() {
         // タブ切り替え
         const personTab = document.getElementById('person-tab');
-        const aiTab = document.getElementById('ai-tab');
+        const toxicTab = document.getElementById('toxic-tab');
         
         personTab.addEventListener('click', () => {
-            currentTab = 'filtered';
-            personTab.classList.add('active');
-            aiTab.classList.remove('active');
-            document.getElementById('person-comments').classList.add('active');
-            document.getElementById('ai-comments').classList.remove('active');
-            
-            // タブ名を更新
-            personTab.textContent = 'AIフィルター済み';
-            
-            // コメントを再読み込み
-            nextPageToken = null;
-            loadComments();
+            switchTab('filtered', personTab, [toxicTab], 'person-comments');
         });
         
-        aiTab.addEventListener('click', () => {
-            currentTab = 'all';
-            aiTab.classList.add('active');
-            personTab.classList.remove('active');
-            document.getElementById('ai-comments').classList.add('active');
-            document.getElementById('person-comments').classList.remove('active');
-            
-            // タブ名を更新
-            aiTab.textContent = '全てのコメント';
-            
-            // コメントを再読み込み
-            nextPageToken = null;
-            loadComments();
+        toxicTab.addEventListener('click', () => {
+            switchTab('toxic', toxicTab, [personTab], 'toxic-comments');
         });
         
         // 初期タブ名を設定
         personTab.textContent = 'AIフィルター済み';
-        aiTab.textContent = '全てのコメント';
+        toxicTab.textContent = '有害判定済み';
+    }
+    
+    // タブ切り替えのヘルパー関数
+    function switchTab(tab, activeTabElement, inactiveTabElements, activeContentId) {
+        currentTab = tab;
+        
+        // タブのアクティブ状態を更新
+        activeTabElement.classList.add('active');
+        inactiveTabElements.forEach(el => el.classList.remove('active'));
+        
+        // コンテンツの表示/非表示を更新
+        document.getElementById('person-comments').classList.remove('active');
+        document.getElementById('toxic-comments').classList.remove('active');
+        document.getElementById(activeContentId).classList.add('active');
+        
+        // 既存のデータがある場合は再表示、なければ読み込み
+        if (filteredData.safe.length > 0 || filteredData.toxic.length > 0) {
+            if (currentTab === 'filtered') {
+                displayFilteredComments(filteredData.safe);
+            } else if (currentTab === 'toxic') {
+                displayToxicComments(filteredData.toxic, filteredData.analysis);
+            }
+        } else {
+            // データがない場合は読み込み
+            nextPageToken = null;
+            loadComments();
+        }
     }
     
     // 無限スクロールを設定
@@ -303,14 +582,25 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ローディング表示
     function showLoadingIndicator() {
-        const container = currentTab === 'filtered' ? 
-            document.getElementById('person-comments') : 
-            document.getElementById('ai-comments');
-            
-        const loader = document.createElement('div');
-        loader.className = 'comment-loader';
-        loader.innerHTML = '<div class="loader-spinner"></div><p>コメントを読み込んでいます...</p>';
-        container.appendChild(loader);
+        let container;
+        if (currentTab === 'filtered') {
+            container = document.getElementById('person-comments');
+        } else if (currentTab === 'toxic') {
+            container = document.getElementById('toxic-comments');
+        }
+        
+        // 既にコンテンツがある場合は下部に小さく表示
+        if (container.children.length > 0) {
+            const loader = document.createElement('div');
+            loader.className = 'comment-loader comment-loader-small';
+            loader.innerHTML = '<div class="loader-spinner"></div>';
+            container.appendChild(loader);
+        } else {
+            const loader = document.createElement('div');
+            loader.className = 'comment-loader';
+            loader.innerHTML = '<div class="loader-spinner"></div><p>コメントを読み込んでいます...</p>';
+            container.appendChild(loader);
+        }
     }
     
     // ローディング非表示
@@ -321,13 +611,63 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // エラー表示
     function showError(message) {
-        const container = currentTab === 'filtered' ? 
-            document.getElementById('person-comments') : 
-            document.getElementById('ai-comments');
+        let container;
+        if (currentTab === 'filtered') {
+            container = document.getElementById('person-comments');
+        } else if (currentTab === 'toxic') {
+            container = document.getElementById('toxic-comments');
+        }
             
         const error = document.createElement('div');
         error.className = 'error-message';
         error.textContent = message;
         container.appendChild(error);
+    }
+    
+    // プログレス表示
+    function showProgressIndicator(processed, total) {
+        // 既存のプログレスを削除
+        const existingProgress = document.querySelector('.analysis-progress');
+        if (existingProgress) {
+            existingProgress.remove();
+        }
+        
+        const progress = document.createElement('div');
+        progress.className = 'analysis-progress';
+        progress.innerHTML = `
+            <div class="progress-content">
+                <span class="progress-text">コメント分析中... (<span class="progress-count">${processed}件)</span>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: ${(processed / total) * 100}%"></div>
+                </div>
+            </div>
+        `;
+        
+        // 最初のタブの上部に表示
+        const container = document.querySelector('.comment-tabs');
+        container.insertAdjacentElement('afterend', progress);
+    }
+    
+    // プログレス更新
+    function updateProgressIndicator(processed, total) {
+        const progressCount = document.querySelector('.progress-count');
+        const progressFill = document.querySelector('.progress-fill');
+        
+        if (progressCount) {
+            progressCount.textContent = processed;
+        }
+        
+        if (progressFill) {
+            progressFill.style.width = `${(processed / total) * 100}%`;
+        }
+    }
+    
+    // プログレス非表示
+    function hideProgressIndicator() {
+        const progress = document.querySelector('.analysis-progress');
+        if (progress) {
+            progress.classList.add('fade-out');
+            setTimeout(() => progress.remove(), 300);
+        }
     }
 });

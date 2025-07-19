@@ -22,107 +22,27 @@
         </div>
         
         <div class="video-detail-info">
-            <div class="video-thumbnail-placeholder green-character">
-                <div class="character-eyes">👀</div>
+            <div class="video-thumbnail-placeholder">
+                <!-- サムネイルはJavaScriptで動的に読み込まれます -->
             </div>
             <div class="video-meta">
-                <h2>モーニングルーティン</h2>
-                <p>11万回視聴 1日前</p>
+                <h2>読み込み中...</h2>
+                <p></p>
             </div>
         </div>
         
         <div class="comment-tabs">
-            <button class="tab-btn active" id="person-tab">本人返信コメント</button>
-            <button class="tab-btn" id="ai-tab">AI自動コメント</button>
+            <button class="tab-btn active" id="person-tab">AIフィルター済み</button>
+            <button class="tab-btn" id="toxic-tab">有害判定済み</button>
         </div>
         
         <div class="comments-container">
             <div id="person-comments" class="comments-section active">
-                <div class="comment-item">
-                    <div class="comment-avatar">👤</div>
-                    <div class="comment-content">
-                        <div class="comment-meta">
-                            <span class="comment-time">10時間前</span>
-                            <span class="notification-dot"></span>
-                        </div>
-                        <p class="comment-text">いつも何時に起きてますか？</p>
-                        <button class="reply-btn">コメントに返信</button>
-                    </div>
-                </div>
-                
-                <div class="comment-item">
-                    <div class="comment-avatar">👤</div>
-                    <div class="comment-content">
-                        <div class="comment-meta">
-                            <span class="comment-time">10時間前</span>
-                            <span class="notification-dot"></span>
-                        </div>
-                        <p class="comment-text">そのメガネはどこの？</p>
-                        <button class="reply-btn">コメントに返信</button>
-                    </div>
-                </div>
-                
-                <div class="comment-item">
-                    <div class="comment-avatar">👤</div>
-                    <div class="comment-content">
-                        <div class="comment-meta">
-                            <span class="comment-time">11時間前</span>
-                            <span class="notification-dot"></span>
-                        </div>
-                        <p class="comment-text">カメラは何使ってますか？</p>
-                        <button class="reply-btn">コメントに返信</button>
-                    </div>
-                </div>
+                <!-- コメントはJavaScriptで動的に読み込まれます -->
             </div>
             
-            <div id="ai-comments" class="comments-section">
-                <div class="comment-item">
-                    <div class="comment-avatar">👤</div>
-                    <div class="comment-content">
-                        <div class="comment-meta">
-                            <span class="comment-time">3時間前</span>
-                            <span class="notification-dot"></span>
-                        </div>
-                        <p class="comment-text">あこがれます！</p>
-                        <div class="ai-reply">
-                            <div class="ai-badge">AI</div>
-                            <div class="ai-reply-text">ありがとうございます！</div>
-                            <button class="send-btn">✈️</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="comment-item">
-                    <div class="comment-avatar">👤</div>
-                    <div class="comment-content">
-                        <div class="comment-meta">
-                            <span class="comment-time">10時間前</span>
-                            <span class="notification-dot"></span>
-                        </div>
-                        <p class="comment-text">真似したい。理想の生活すぎる。</p>
-                        <div class="ai-reply">
-                            <div class="ai-badge">AI</div>
-                            <div class="ai-reply-text">ぜひ真似してください^^</div>
-                            <button class="send-btn">✈️</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="comment-item">
-                    <div class="comment-avatar">👤</div>
-                    <div class="comment-content">
-                        <div class="comment-meta">
-                            <span class="comment-time">23時間前</span>
-                            <span class="notification-dot"></span>
-                        </div>
-                        <p class="comment-text">めっちゃいい</p>
-                        <div class="ai-reply">
-                            <div class="ai-badge">AI</div>
-                            <div class="ai-reply-text">だろ！！</div>
-                            <button class="send-btn">✈️</button>
-                        </div>
-                    </div>
-                </div>
+            <div id="toxic-comments" class="comments-section">
+                <!-- 有害判定されたコメントがここに表示されます -->
             </div>
         </div>
         
