@@ -1,6 +1,4 @@
-# AIvoid - YouTube AI Assistant
-
-YouTubeチャンネル管理を支援するAIアシスタントアプリ
+# AIvoid
 
 ## セットアップ
 
@@ -25,7 +23,8 @@ PERSPECTIVE_API_KEY=your_api_key_here
 npm start
 ```
 
-ブラウザで `http://localhost:3000` にアクセス
+ブラウザで `http://localhost:3000/index.html` にアクセス
+2025/07/19時点でログイン画面は未開発のため、id, password入力なしでボタン押せば遷移します
 
 ## 機能
 
