@@ -30,31 +30,16 @@ function getPerspectiveAPIKey() {
 
 // サーバーからAPIキーを取得
 async function loadConfig() {
-    if (CONFIG.IS_LOCAL) {
-        try {
-            const response = await fetch('/api/config');
-            const data = await response.json();
-            setYouTubeAPIKey(data.YOUTUBE_API_KEY);
-            if (data.PERSPECTIVE_API_KEY) {
-                setPerspectiveAPIKey(data.PERSPECTIVE_API_KEY);
-            }
-            return true;
-        } catch (error) {
-            console.error('Failed to load config from server:', error);
-            return false;
+    try {
+        const response = await fetch('/api/config');
+        const data = await response.json();
+        setYouTubeAPIKey(data.YOUTUBE_API_KEY);
+        if (data.PERSPECTIVE_API_KEY) {
+            setPerspectiveAPIKey(data.PERSPECTIVE_API_KEY);
         }
-    } else {
-        // 本番環境では別の方法でAPIキーを設定
-        const youtubeKey = localStorage.getItem('YOUTUBE_API_KEY');
-        const perspectiveKey = localStorage.getItem('PERSPECTIVE_API_KEY');
-        
-        if (youtubeKey) {
-            setYouTubeAPIKey(youtubeKey);
-        }
-        if (perspectiveKey) {
-            setPerspectiveAPIKey(perspectiveKey);
-        }
-        
-        return !!youtubeKey;
+        return true;
+    } catch (error) {
+        console.error('Failed to load config from server:', error);
+        return false;
     }
 }

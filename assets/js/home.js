@@ -10,20 +10,8 @@ async function initializeYouTubeData() {
         const configLoaded = await loadConfig();
         
         if (!configLoaded) {
-            // ローカル環境でない場合、APIキーの入力を求める
-            if (!CONFIG.IS_LOCAL) {
-                const apiKey = prompt('YouTube Data API キーを入力してください:');
-                if (apiKey) {
-                    setYouTubeAPIKey(apiKey);
-                    localStorage.setItem('YOUTUBE_API_KEY', apiKey);
-                } else {
-                    console.log('APIキーが設定されていません。デモデータを表示します。');
-                    return;
-                }
-            } else {
-                console.error('サーバーからの設定読み込みに失敗しました');
-                return;
-            }
+            console.error('APIキーの設定を読み込めませんでした');
+            return;
         }
 
         // ローディング表示
