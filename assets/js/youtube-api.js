@@ -4,26 +4,17 @@ class YouTubeAPI {
         this.baseURL = CONFIG.YOUTUBE_API_BASE_URL;
     }
 
-    // APIキーの確認
+    // APIキーの確認（サーバーサイドプロキシ使用時は不要）
     checkAPIKey() {
-        const apiKey = getYouTubeAPIKey();
-        if (!apiKey) {
-            throw new Error('YouTube API Key is not set');
-        }
-        return apiKey;
+        // サーバーサイドプロキシを使用するため、クライアント側でAPIキーは不要
+        return null;
     }
 
     // チャンネル情報を取得
     async getChannelInfo(channelId = CONFIG.DEFAULT_CHANNEL_ID) {
         try {
-            let url;
-            if (CONFIG.IS_LOCAL) {
-                // ローカル開発時はプロキシ経由
-                url = `${this.baseURL}/channels?part=snippet,statistics&id=${channelId}`;
-            } else {
-                const apiKey = this.checkAPIKey();
-                url = `${this.baseURL}/channels?part=snippet,statistics&id=${channelId}&key=${apiKey}`;
-            }
+            // 常にサーバーサイドプロキシを使用
+            const url = `/api/youtube/channels?part=snippet,statistics&id=${channelId}`;
             
             const response = await fetch(url);
             
@@ -56,14 +47,8 @@ class YouTubeAPI {
     // チャンネルの動画一覧を取得
     async getChannelVideos(channelId = CONFIG.DEFAULT_CHANNEL_ID, maxResults = 10) {
         try {
-            let url;
-            if (CONFIG.IS_LOCAL) {
-                // ローカル開発時はプロキシ経由
-                url = `${this.baseURL}/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxResults}`;
-            } else {
-                const apiKey = this.checkAPIKey();
-                url = `${this.baseURL}/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxResults}&key=${apiKey}`;
-            }
+            // 常にサーバーサイドプロキシを使用
+            const url = `/api/youtube/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxResults}`;
             
             const response = await fetch(url);
             
@@ -100,14 +85,8 @@ class YouTubeAPI {
     // 動画の統計情報を取得
     async getVideosStatistics(videoIds) {
         try {
-            let url;
-            if (CONFIG.IS_LOCAL) {
-                // ローカル開発時はプロキシ経由
-                url = `${this.baseURL}/videos?part=statistics&id=${videoIds}`;
-            } else {
-                const apiKey = this.checkAPIKey();
-                url = `${this.baseURL}/videos?part=statistics&id=${videoIds}&key=${apiKey}`;
-            }
+            // 常にサーバーサイドプロキシを使用
+            const url = `/api/youtube/videos?part=statistics&id=${videoIds}`;
             
             const response = await fetch(url);
             const data = await response.json();
@@ -158,13 +137,8 @@ class YouTubeAPI {
     // 動画の詳細情報を取得
     async getVideoDetails(videoId) {
         try {
-            let url;
-            if (CONFIG.IS_LOCAL) {
-                url = `${this.baseURL}/videos?part=snippet,statistics&id=${videoId}`;
-            } else {
-                const apiKey = this.checkAPIKey();
-                url = `${this.baseURL}/videos?part=snippet,statistics&id=${videoId}&key=${apiKey}`;
-            }
+            // 常にサーバーサイドプロキシを使用
+            const url = `/api/youtube/videos?part=snippet,statistics&id=${videoId}`;
             
             const response = await fetch(url);
             if (!response.ok) {
@@ -195,15 +169,9 @@ class YouTubeAPI {
     // 動画のコメントを取得
     async getVideoComments(videoId, pageToken = null, maxResults = 20) {
         try {
-            let url;
-            if (CONFIG.IS_LOCAL) {
-                url = `${this.baseURL}/commentThreads?part=snippet,replies&videoId=${videoId}&order=relevance&maxResults=${maxResults}`;
-                if (pageToken) url += `&pageToken=${pageToken}`;
-            } else {
-                const apiKey = this.checkAPIKey();
-                url = `${this.baseURL}/commentThreads?part=snippet,replies&videoId=${videoId}&order=relevance&maxResults=${maxResults}&key=${apiKey}`;
-                if (pageToken) url += `&pageToken=${pageToken}`;
-            }
+            // 常にサーバーサイドプロキシを使用
+            let url = `/api/youtube/commentThreads?part=snippet,replies&videoId=${videoId}&order=relevance&maxResults=${maxResults}`;
+            if (pageToken) url += `&pageToken=${pageToken}`;
             
             const response = await fetch(url);
             if (!response.ok) {
