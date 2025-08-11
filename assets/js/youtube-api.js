@@ -106,7 +106,7 @@ class YouTubeAPI {
     formatNumber(num) {
         const number = parseInt(num);
         if (number >= 10000) {
-            return Math.floor(number / 10000) + '.' + Math.floor((number % 10000) / 1000) + '万';
+            return Math.floor(number / 10000) + '万';
         }
         return number.toLocaleString();
     }
