@@ -49,8 +49,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('Loading video details for ID:', currentVideoId);
             const videoDetails = await youtubeAPI.getVideoDetails(currentVideoId);
             
-            console.log('Video details loaded:', videoDetails);
-            
             // 動画情報を表示
             const titleElement = document.querySelector('.video-meta h2');
             const viewCountElement = document.querySelector('.video-meta p');
