@@ -8,29 +8,38 @@ const path = require('path');
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 30001;
+const isDevelopment = process.env.NODE_ENV === 'development';
 
-// CORS設定（ローカル開発のみ許可）
-app.use(cors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000']
-}));
+// ヘルスチェック用エンドポイント
+app.get('/health', (req, res) => {
+    res.status(200).json({ status: 'ok', environment: process.env.NODE_ENV || 'unknown' });
+});
+
+// CORS設定
+if (isDevelopment) {
+    // 開発環境では緩いCORS設定
+    app.use(cors({
+        origin: [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`]
+    }));
+} else {
+    // 本番環境では厳格なCORS設定
+    app.use(cors({
+        origin: process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : false
+    }));
+}
 
 // 静的ファイルの提供
 app.use(express.static('.'));
 
-// APIキーをクライアントに提供するエンドポイント（ローカルのみ）
+// APIキーをクライアントに提供するエンドポイント（開発環境のみ）
 app.get('/api/config', (req, res) => {
-    // IPアドレスとHostヘッダーの両方をチェック
-    const clientIP = req.ip || req.connection.remoteAddress;
-    const host = req.get('host');
-    
-    const isLocalIP = clientIP === '127.0.0.1' || clientIP === '::1' || clientIP === '::ffff:127.0.0.1';
-    const isLocalHost = host && (host.startsWith('localhost') || host.startsWith('127.0.0.1'));
-    
-    if (!isLocalIP || !isLocalHost) {
-        return res.status(403).json({ error: 'API keys only available for localhost' });
+    if (!isDevelopment) {
+        // 本番環境ではAPIキーを公開しない
+        return res.status(403).json({ error: 'API keys not available in production' });
     }
     
+    // 開発環境のみAPIキーを返す
     res.json({
         YOUTUBE_API_KEY: process.env.YOUTUBE_API_KEY,
         PERSPECTIVE_API_KEY: process.env.PERSPECTIVE_API_KEY
@@ -68,6 +77,6 @@ app.get('/api/youtube/*', async (req, res) => {
     }
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running in ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} mode on port ${PORT}`);
 });
