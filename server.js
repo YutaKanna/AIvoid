@@ -1,4 +1,4 @@
-// 簡易的なローカルサーバー（開発用）
+// Expressサーバー
 const express = require('express');
 const dotenv = require('dotenv');
 const cors = require('cors');
@@ -30,7 +30,20 @@ if (isDevelopment) {
 }
 
 // 静的ファイルの提供
-app.use(express.static('.'));
+app.use(express.static(path.join(__dirname)));
+
+// HTMLファイルへのルーティング
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'index.html'));
+});
+
+app.get('/home.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'home.html'));
+});
+
+app.get('/video-detail.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'video-detail.html'));
+});
 
 // APIキーをクライアントに提供するエンドポイント（開発環境のみ）
 app.get('/api/config', (req, res) => {
@@ -77,6 +90,24 @@ app.get('/api/youtube/*', async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running in ${isDevelopment ? 'DEVELOPMENT' : 'PRODUCTION'} mode on port ${PORT}`);
+    console.log(`Health check: http://0.0.0.0:${PORT}/health`);
+});
+
+// グレースフルシャットダウン
+process.on('SIGTERM', () => {
+    console.log('SIGTERM signal received');
+    server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+    });
+});
+
+process.on('SIGINT', () => {
+    console.log('SIGINT signal received');
+    server.close(() => {
+        console.log('Server closed');
+        process.exit(0);
+    });
 });
