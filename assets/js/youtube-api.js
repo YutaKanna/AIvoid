@@ -10,11 +10,45 @@ class YouTubeAPI {
         return null;
     }
 
-    // チャンネル情報を取得
-    async getChannelInfo(channelId = CONFIG.DEFAULT_CHANNEL_ID) {
+    // ハンドル名からチャンネル情報を取得
+    async getChannelByHandle(handle) {
         try {
+            // ハンドル名から@を削除
+            const cleanHandle = handle.startsWith('@') ? handle.substring(1) : handle;
+            
+            // 検索APIを使用してハンドル名からチャンネルを検索
+            const searchUrl = `/api/youtube/search?part=snippet&type=channel&q=${encodeURIComponent('@' + cleanHandle)}&maxResults=1`;
+            
+            const searchResponse = await fetch(searchUrl);
+            
+            if (!searchResponse.ok) {
+                throw new Error(`HTTP error! status: ${searchResponse.status}`);
+            }
+            
+            const searchData = await searchResponse.json();
+            
+            if (searchData.items && searchData.items.length > 0) {
+                const channelId = searchData.items[0].snippet.channelId;
+                return await this.getChannelInfo(channelId);
+            } else {
+                throw new Error('Channel not found');
+            }
+        } catch (error) {
+            console.error('Error fetching channel by handle:', error);
+            throw error;
+        }
+    }
+
+    // チャンネル情報を取得（IDまたはハンドル名で）
+    async getChannelInfo(channelIdOrHandle = CONFIG.DEFAULT_CHANNEL_ID) {
+        try {
+            // ハンドル名の場合は別処理
+            if (channelIdOrHandle.includes('@') || !channelIdOrHandle.startsWith('UC')) {
+                return await this.getChannelByHandle(channelIdOrHandle);
+            }
+            
             // 常にサーバーサイドプロキシを使用
-            const url = `/api/youtube/channels?part=snippet,statistics&id=${channelId}`;
+            const url = `/api/youtube/channels?part=snippet,statistics&id=${channelIdOrHandle}`;
             
             const response = await fetch(url);
             
@@ -26,7 +60,10 @@ class YouTubeAPI {
             
             if (data.items && data.items.length > 0) {
                 const channel = data.items[0];
+                // チャンネルIDを保存
+                this.currentChannelId = channel.id;
                 return {
+                    id: channel.id,
                     title: channel.snippet.title,
                     description: channel.snippet.description,
                     subscriberCount: this.formatNumber(channel.statistics.subscriberCount),

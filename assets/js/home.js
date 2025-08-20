@@ -14,6 +14,15 @@ async function initializeYouTubeData() {
             return;
         }
 
+        // URLパラメータからチャンネルIDを取得
+        const urlParams = new URLSearchParams(window.location.search);
+        const channelIdFromUrl = urlParams.get('channel');
+        
+        // チャンネルIDを設定（URLパラメータ優先、なければデフォルト）
+        if (channelIdFromUrl) {
+            CONFIG.DEFAULT_CHANNEL_ID = channelIdFromUrl;
+        }
+
         // ローディング表示
         showLoading();
 
@@ -68,7 +77,9 @@ async function loadChannelInfo() {
 
 async function loadChannelVideos() {
     try {
-        const videos = await youtubeAPI.getChannelVideos(CONFIG.DEFAULT_CHANNEL_ID, 4);
+        // 現在のチャンネルIDを取得（getChannelInfoで保存されたID）
+        const channelId = youtubeAPI.currentChannelId || CONFIG.DEFAULT_CHANNEL_ID;
+        const videos = await youtubeAPI.getChannelVideos(channelId, 4);
         
         // 動画リストを更新
         const videoList = document.querySelector('.video-list');
