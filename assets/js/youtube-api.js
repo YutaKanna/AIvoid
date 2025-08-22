@@ -82,10 +82,13 @@ class YouTubeAPI {
     }
 
     // チャンネルの動画一覧を取得
-    async getChannelVideos(channelId = CONFIG.DEFAULT_CHANNEL_ID, maxResults = 10) {
+    async getChannelVideos(channelId = CONFIG.DEFAULT_CHANNEL_ID, maxResults = 10, pageToken = null) {
         try {
             // 常にサーバーサイドプロキシを使用
-            const url = `/api/youtube/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxResults}`;
+            let url = `/api/youtube/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxResults}`;
+            if (pageToken) {
+                url += `&pageToken=${pageToken}`;
+            }
             
             const response = await fetch(url);
             
@@ -100,7 +103,7 @@ class YouTubeAPI {
                 const videoIds = data.items.map(item => item.id.videoId).join(',');
                 const videosWithStats = await this.getVideosStatistics(videoIds);
                 
-                return data.items.map((item, index) => ({
+                const videos = data.items.map((item, index) => ({
                     id: item.id.videoId,
                     title: item.snippet.title,
                     description: item.snippet.description,
@@ -110,9 +113,17 @@ class YouTubeAPI {
                     likeCount: videosWithStats[index]?.likeCount || '0',
                     commentCount: videosWithStats[index]?.commentCount || '0'
                 }));
+                
+                return {
+                    videos: videos,
+                    nextPageToken: data.nextPageToken || null
+                };
             }
             
-            return [];
+            return {
+                videos: [],
+                nextPageToken: null
+            };
         } catch (error) {
             console.error('Error fetching channel videos:', error);
             throw error;

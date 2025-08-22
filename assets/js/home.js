@@ -1,4 +1,8 @@
 // ホーム画面専用のJavaScript
+let nextPageToken = null;
+let isLoading = false;
+let allVideos = [];
+
 document.addEventListener('DOMContentLoaded', function() {
     // APIキーの設定チェックと初期化
     initializeYouTubeData();
@@ -19,6 +23,19 @@ document.addEventListener('DOMContentLoaded', function() {
             refreshHomeContent();
         });
     }
+    
+    // 無限スクロールの実装
+    window.addEventListener('scroll', async function() {
+        if (isLoading) return;
+        
+        const scrollPosition = window.innerHeight + window.scrollY;
+        const documentHeight = document.documentElement.offsetHeight;
+        
+        // ページ下部に近づいたら追加読み込み
+        if (scrollPosition >= documentHeight - 500 && nextPageToken) {
+            await loadMoreVideos();
+        }
+    });
 });
 
 async function initializeYouTubeData() {
@@ -96,12 +113,16 @@ async function loadChannelVideos() {
     try {
         // 現在のチャンネルIDを取得（getChannelInfoで保存されたID）
         const channelId = youtubeAPI.currentChannelId || CONFIG.DEFAULT_CHANNEL_ID;
-        const videos = await youtubeAPI.getChannelVideos(channelId, 4);
+        const result = await youtubeAPI.getChannelVideos(channelId, 10);
+        
+        // グローバル変数を更新
+        allVideos = result.videos;
+        nextPageToken = result.nextPageToken;
         
         // 動画リストを更新
         const videoList = document.querySelector('.video-list');
-        if (videoList && videos.length > 0) {
-            videoList.innerHTML = videos.map((video) => `
+        if (videoList && allVideos.length > 0) {
+            videoList.innerHTML = allVideos.map((video) => `
                 <div class="video-item" data-video-id="${video.id}">
                     <img src="${video.thumbnail}" alt="${video.title}" class="thumbnail">
                     <div class="video-info">
@@ -117,7 +138,7 @@ async function loadChannelVideos() {
             setupVideoClickEvents();
         }
 
-        console.log('Videos loaded:', videos);
+        console.log('Videos loaded:', allVideos);
     } catch (error) {
         console.error('Failed to load videos:', error);
     }
@@ -176,6 +197,10 @@ function resetAPIKey() {
 // コンテンツをリフレッシュする関数
 async function refreshHomeContent() {
     try {
+        // ページネーションをリセット
+        nextPageToken = null;
+        allVideos = [];
+        
         // ローディング表示
         showLoading();
         
@@ -192,6 +217,65 @@ async function refreshHomeContent() {
     } catch (error) {
         console.error('Failed to refresh content:', error);
         hideLoading();
+    }
+}
+
+// 追加の動画を読み込む関数
+async function loadMoreVideos() {
+    if (isLoading || !nextPageToken) return;
+    
+    try {
+        isLoading = true;
+        
+        // ローディングインジケータを表示
+        const videoList = document.querySelector('.video-list');
+        if (videoList) {
+            videoList.insertAdjacentHTML('beforeend', '<div class="loading-more"><div class="spinner"></div></div>');
+        }
+        
+        const channelId = youtubeAPI.currentChannelId || CONFIG.DEFAULT_CHANNEL_ID;
+        const result = await youtubeAPI.getChannelVideos(channelId, 10, nextPageToken);
+        
+        // 新しい動画を追加
+        allVideos = [...allVideos, ...result.videos];
+        nextPageToken = result.nextPageToken;
+        
+        // ローディングインジケータを削除
+        const loadingIndicator = document.querySelector('.loading-more');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+        
+        // 新しい動画をDOMに追加
+        if (videoList && result.videos.length > 0) {
+            const newVideosHtml = result.videos.map((video) => `
+                <div class="video-item" data-video-id="${video.id}">
+                    <img src="${video.thumbnail}" alt="${video.title}" class="thumbnail">
+                    <div class="video-info">
+                        <h4>${truncateTitle(video.title)}</h4>
+                        <p>${video.viewCount}回視聴 ${video.publishedAt}</p>
+                        <button class="btn-secondary">本人返信あり</button>
+                    </div>
+                    <span class="video-badge">${Math.floor(Math.random() * 5) + 1}</span>
+                </div>
+            `).join('');
+            
+            videoList.insertAdjacentHTML('beforeend', newVideosHtml);
+            
+            // 動画アイテムのクリックイベントを再設定
+            setupVideoClickEvents();
+        }
+        
+        console.log('More videos loaded:', result.videos.length);
+    } catch (error) {
+        console.error('Failed to load more videos:', error);
+        // ローディングインジケータを削除
+        const loadingIndicator = document.querySelector('.loading-more');
+        if (loadingIndicator) {
+            loadingIndicator.remove();
+        }
+    } finally {
+        isLoading = false;
     }
 }
 
