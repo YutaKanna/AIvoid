@@ -2,6 +2,23 @@
 document.addEventListener('DOMContentLoaded', function() {
     // APIキーの設定チェックと初期化
     initializeYouTubeData();
+    
+    // 家アイコンのクリック処理
+    const homeButton = document.getElementById('homeButton');
+    if (homeButton) {
+        homeButton.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // スクロールをトップに戻す
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+            
+            // 最新動画を再取得
+            refreshHomeContent();
+        });
+    }
 });
 
 async function initializeYouTubeData() {
@@ -154,6 +171,28 @@ function hideLoading() {
 function resetAPIKey() {
     localStorage.removeItem('YOUTUBE_API_KEY');
     location.reload();
+}
+
+// コンテンツをリフレッシュする関数
+async function refreshHomeContent() {
+    try {
+        // ローディング表示
+        showLoading();
+        
+        // チャンネル情報を再取得
+        await loadChannelInfo();
+        
+        // 動画一覧を再取得
+        await loadChannelVideos();
+        
+        // ローディング非表示
+        hideLoading();
+        
+        console.log('Home content refreshed');
+    } catch (error) {
+        console.error('Failed to refresh content:', error);
+        hideLoading();
+    }
 }
 
 // グローバルに公開（デバッグ用）
