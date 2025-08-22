@@ -380,11 +380,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 <div class="comment-meta">
                     <span class="comment-author">${comment.authorName}</span>
                     <span class="comment-time">${comment.publishedAt}</span>
-                    ${comment.likeCount > 0 ? `<span class="comment-likes">👍 ${comment.likeCount}</span>` : ''}
                 </div>
                 <p class="comment-text">${comment.text}</p>
+                <div class="comment-actions">
+                    <button class="comment-action-btn">
+                        👍 ${comment.likeCount > 0 ? comment.likeCount : ''}
+                    </button>
+                    <button class="comment-action-btn">
+                        👎
+                    </button>
+                    <button class="comment-action-btn">
+                        返信
+                    </button>
+                </div>
                 ${analysisResult && currentTab === 'all' ? createScoreBadges(analysisResult.scores) : ''}
-                ${comment.replyCount > 0 ? `<button class="show-replies-btn" data-comment-id="${comment.id}">返信を表示 (${comment.replyCount}件)</button>` : ''}
+                ${comment.replyCount > 0 ? `<button class="show-replies-btn" data-comment-id="${comment.id}">▼ ${comment.replyCount} 件の返信</button>` : ''}
             </div>
         `;
         
@@ -476,9 +486,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // 返信の表示/非表示を切り替え
     function toggleReplies(comment, commentElement) {
         const existingReplies = commentElement.querySelector('.replies-container');
+        const showRepliesBtn = commentElement.querySelector('.show-replies-btn');
         
         if (existingReplies) {
             existingReplies.remove();
+            showRepliesBtn.innerHTML = `▼ ${comment.replyCount} 件の返信`;
         } else {
             const repliesContainer = document.createElement('div');
             repliesContainer.className = 'replies-container';
@@ -488,7 +500,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 repliesContainer.appendChild(replyElement);
             });
             
-            commentElement.appendChild(repliesContainer);
+            // コメントの最後の要素の後に挿入
+            const commentContent = commentElement.querySelector('.comment-content');
+            commentContent.appendChild(repliesContainer);
+            showRepliesBtn.innerHTML = `▲ ${comment.replyCount} 件の返信`;
         }
     }
     
@@ -505,6 +520,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     <span class="reply-time">${reply.publishedAt}</span>
                 </div>
                 <p class="reply-text">${reply.text}</p>
+                <div class="comment-actions">
+                    <button class="comment-action-btn">
+                        👍 ${reply.likeCount > 0 ? reply.likeCount : ''}
+                    </button>
+                    <button class="comment-action-btn">
+                        👎
+                    </button>
+                    <button class="comment-action-btn">
+                        返信
+                    </button>
+                </div>
             </div>
         `;
         
