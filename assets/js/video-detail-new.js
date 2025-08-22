@@ -551,6 +551,36 @@ document.addEventListener('DOMContentLoaded', function() {
             switchTab('toxic', toxicTab, [personTab], 'toxic-comments');
         });
         
+        // Coming Soonリンクの処理
+        const comingSoonLinks = document.querySelectorAll('.coming-soon');
+        const modal = document.getElementById('coming-soon-modal');
+        const featureText = document.getElementById('coming-soon-feature');
+        const closeBtn = document.querySelector('.coming-soon-close');
+        
+        comingSoonLinks.forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const feature = this.getAttribute('data-feature');
+                featureText.textContent = `「${feature}」機能は`;
+                modal.style.display = 'flex';
+            });
+        });
+        
+        if (closeBtn) {
+            closeBtn.addEventListener('click', function() {
+                modal.style.display = 'none';
+            });
+        }
+        
+        // モーダル外側クリックで閉じる
+        if (modal) {
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+        }
+        
         // 初期タブ名を設定
         personTab.textContent = 'AIフィルター済み';
         toxicTab.textContent = '有害判定済み';

@@ -49,12 +49,23 @@
         
         <nav class="bottom-nav">
             <a href="#" id="homeButton" class="nav-item active">🏠</a>
-            <a href="messages.html" class="nav-item">✉️<span class="badge">1</span></a>
-            <a href="analytics.html" class="nav-item">📊</a>
-            <a href="settings.html" class="nav-item">⚙️</a>
+            <a href="#" class="nav-item coming-soon" data-feature="メッセージ">✉️</a>
+            <a href="#" class="nav-item coming-soon" data-feature="分析">📊</a>
+            <a href="#" class="nav-item coming-soon" data-feature="設定">⚙️</a>
         </nav>
         
         <div class="home-indicator"></div>
+        
+        <!-- Coming Soon Modal -->
+        <div id="coming-soon-modal" class="coming-soon-modal">
+            <div class="coming-soon-content">
+                <div class="coming-soon-icon">🚀</div>
+                <h3>開発中</h3>
+                <p id="coming-soon-feature">この機能</p>
+                <p class="coming-soon-text">現在開発中です。<br>もう少しお待ちください！</p>
+                <button class="coming-soon-close">OK</button>
+            </div>
+        </div>
     </div>
     
     <script src="assets/js/clock.js"></script>
