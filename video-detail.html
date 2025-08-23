@@ -31,19 +31,20 @@
             </div>
         </div>
         
-        <div class="comment-tabs">
+        <!-- <div class="comment-tabs">
             <button class="tab-btn active" id="person-tab">AIフィルター済み</button>
-            <button class="tab-btn" id="toxic-tab">有害判定済み</button>
-        </div>
+        </div> -->
         
         <div class="comments-container">
             <div id="person-comments" class="comments-section active">
-                <!-- コメントはJavaScriptで動的に読み込まれます -->
+                <div class="comment-loader">
+                    <div style="width: 32px; height: 32px; border: 2px solid #f3f3f3; border-top-color: #4A90E2; border-radius: 50%; animation: spin 0.6s linear infinite; margin: 0 auto 16px auto;"></div>
+                    <p>コメントを読み込んでいます...</p>
+                </div>
             </div>
             
-            <div id="toxic-comments" class="comments-section">
-                <!-- 有害判定されたコメントがここに表示されます -->
-            </div>
+            <!-- <div id="toxic-comments" class="comments-section">
+            </div> -->
         </div>
         
         <!-- Reply Modal -->
