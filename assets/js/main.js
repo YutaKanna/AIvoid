@@ -16,17 +16,19 @@ document.addEventListener('DOMContentLoaded', function() {
         item.addEventListener('click', function(e) {
             const isLoggedIn = localStorage.getItem('isLoggedIn');
             
-            if (!isLoggedIn && this.getAttribute('href') !== 'index.html') {
-                e.preventDefault();
-                window.location.href = 'signin.html';
-            }
+            // ログインチェックを無効化（signin.htmlが存在しないため）
+            // if (!isLoggedIn && this.getAttribute('href') !== 'index.html') {
+            //     e.preventDefault();
+            //     window.location.href = 'signin.html';
+            // }
         });
     });
     
-    const currentPage = window.location.pathname.split('/').pop();
-    if (currentPage !== 'index.html' && currentPage !== 'signin.html' && !localStorage.getItem('isLoggedIn')) {
-        window.location.href = 'signin.html';
-    }
+    // ログインチェックを無効化（signin.htmlが存在しないため）
+    // const currentPage = window.location.pathname.split('/').pop();
+    // if (currentPage !== 'index.html' && currentPage !== 'signin.html' && !localStorage.getItem('isLoggedIn')) {
+    //     window.location.href = 'signin.html';
+    // }
     
     const videoItems = document.querySelectorAll('.video-item');
     videoItems.forEach(item => {
@@ -55,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (confirm('ログアウトしますか？')) {
                 localStorage.removeItem('isLoggedIn');
                 localStorage.removeItem('userEmail');
-                window.location.href = 'signin.html';
+                window.location.href = 'index.html';  // signin.htmlが存在しないためindex.htmlにリダイレクト
             }
         });
     }
@@ -66,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (confirm('ログアウトしますか？')) {
                 localStorage.removeItem('isLoggedIn');
                 localStorage.removeItem('userEmail');
-                window.location.href = 'signin.html';
+                window.location.href = 'index.html';  // signin.htmlが存在しないためindex.htmlにリダイレクト
             }
         });
     }

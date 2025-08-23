@@ -2,6 +2,10 @@
 class YouTubeAPI {
     constructor() {
         this.baseURL = CONFIG.YOUTUBE_API_BASE_URL;
+        // 環境に応じてAPIのベースURLを設定
+        this.apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:30001' 
+            : '';
     }
 
     // APIキーの確認（サーバーサイドプロキシ使用時は不要）
@@ -17,7 +21,7 @@ class YouTubeAPI {
             const cleanHandle = handle.startsWith('@') ? handle.substring(1) : handle;
             
             // 検索APIを使用してハンドル名からチャンネルを検索
-            const searchUrl = `/api/youtube/search?part=snippet&type=channel&q=${encodeURIComponent('@' + cleanHandle)}&maxResults=1`;
+            const searchUrl = `${this.apiBaseUrl}/api/youtube/search?part=snippet&type=channel&q=${encodeURIComponent('@' + cleanHandle)}&maxResults=1`;
             
             const searchResponse = await fetch(searchUrl);
             
@@ -42,7 +46,7 @@ class YouTubeAPI {
     // チャンネルをキーワードで検索（サジェスト用）
     async searchChannels(query, maxResults = 5) {
         try {
-            const searchUrl = `/api/youtube/search?part=snippet&type=channel&q=${encodeURIComponent(query)}&maxResults=${maxResults}`;
+            const searchUrl = `${this.apiBaseUrl}/api/youtube/search?part=snippet&type=channel&q=${encodeURIComponent(query)}&maxResults=${maxResults}`;
             
             const response = await fetch(searchUrl);
             
@@ -63,7 +67,7 @@ class YouTubeAPI {
                 const channelIds = data.items.map(item => item.snippet.channelId).join(',');
                 
                 // チャンネルの詳細情報を取得
-                const detailsUrl = `/api/youtube/channels?part=snippet,statistics&id=${channelIds}`;
+                const detailsUrl = `${this.apiBaseUrl}/api/youtube/channels?part=snippet,statistics&id=${channelIds}`;
                 const detailsResponse = await fetch(detailsUrl);
                 
                 if (!detailsResponse.ok) {
@@ -105,7 +109,7 @@ class YouTubeAPI {
             }
             
             // 常にサーバーサイドプロキシを使用
-            const url = `/api/youtube/channels?part=snippet,statistics&id=${channelIdOrHandle}`;
+            const url = `${this.apiBaseUrl}/api/youtube/channels?part=snippet,statistics&id=${channelIdOrHandle}`;
             
             const response = await fetch(url);
             
@@ -142,7 +146,7 @@ class YouTubeAPI {
     async getChannelVideos(channelId = CONFIG.DEFAULT_CHANNEL_ID, maxResults = 10, pageToken = null) {
         try {
             // 常にサーバーサイドプロキシを使用
-            let url = `/api/youtube/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxResults}`;
+            let url = `${this.apiBaseUrl}/api/youtube/search?part=snippet&channelId=${channelId}&type=video&order=date&maxResults=${maxResults}`;
             if (pageToken) {
                 url += `&pageToken=${pageToken}`;
             }
@@ -191,7 +195,7 @@ class YouTubeAPI {
     async getVideosStatistics(videoIds) {
         try {
             // 常にサーバーサイドプロキシを使用
-            const url = `/api/youtube/videos?part=statistics&id=${videoIds}`;
+            const url = `${this.apiBaseUrl}/api/youtube/videos?part=statistics&id=${videoIds}`;
             
             const response = await fetch(url);
             const data = await response.json();
@@ -243,7 +247,7 @@ class YouTubeAPI {
     async getVideoDetails(videoId) {
         try {
             // 常にサーバーサイドプロキシを使用
-            const url = `/api/youtube/videos?part=snippet,statistics&id=${videoId}`;
+            const url = `${this.apiBaseUrl}/api/youtube/videos?part=snippet,statistics&id=${videoId}`;
             
             const response = await fetch(url);
             if (!response.ok) {
@@ -275,7 +279,7 @@ class YouTubeAPI {
     async getVideoComments(videoId, pageToken = null, maxResults = 20) {
         try {
             // 常にサーバーサイドプロキシを使用
-            let url = `/api/youtube/commentThreads?part=snippet,replies&videoId=${videoId}&order=relevance&maxResults=${maxResults}`;
+            let url = `${this.apiBaseUrl}/api/youtube/commentThreads?part=snippet,replies&videoId=${videoId}&order=relevance&maxResults=${maxResults}`;
             if (pageToken) url += `&pageToken=${pageToken}`;
             
             const response = await fetch(url);
