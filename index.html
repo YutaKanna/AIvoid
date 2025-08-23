@@ -258,6 +258,150 @@
     <script src="config.js"></script>
     <script src="assets/js/youtube-api.js"></script>
     <script>
+        // ============================================
+        // キャッシュユーティリティクラス
+        // ============================================
+        class APICache {
+            constructor() {
+                this.memoryCache = new Map();
+                this.TTL = {
+                    suggestions: 10 * 60 * 1000,      // 10分
+                    channelInfo: 24 * 60 * 60 * 1000, // 24時間
+                    videos: 5 * 60 * 1000,            // 5分
+                    videoStats: 3 * 60 * 1000,        // 3分
+                    comments: 2 * 60 * 1000           // 2分
+                };
+                this.cleanupInterval = null;
+                this.startCleanup();
+            }
+            
+            // キャッシュキーを生成
+            getCacheKey(type, params) {
+                return `${type}:${JSON.stringify(params)}`;
+            }
+            
+            // メモリとlocalStorageの両方からキャッシュを取得
+            get(type, params) {
+                const key = this.getCacheKey(type, params);
+                
+                // まずメモリキャッシュを確認
+                if (this.memoryCache.has(key)) {
+                    const cached = this.memoryCache.get(key);
+                    if (this.isValid(cached, type)) {
+                        return { data: cached.data, stale: this.isStale(cached, type) };
+                    }
+                    this.memoryCache.delete(key);
+                }
+                
+                // 次にlocalStorageを確認
+                try {
+                    const stored = localStorage.getItem(key);
+                    if (stored) {
+                        const cached = JSON.parse(stored);
+                        if (this.isValid(cached, type)) {
+                            // メモリキャッシュにも保存
+                            this.memoryCache.set(key, cached);
+                            return { data: cached.data, stale: this.isStale(cached, type) };
+                        }
+                        localStorage.removeItem(key);
+                    }
+                } catch (e) {
+                    console.error('Cache read error:', e);
+                }
+                
+                return null;
+            }
+            
+            // キャッシュを保存
+            set(type, params, data) {
+                const key = this.getCacheKey(type, params);
+                const cached = {
+                    data: data,
+                    timestamp: Date.now(),
+                    type: type
+                };
+                
+                // メモリキャッシュに保存
+                this.memoryCache.set(key, cached);
+                
+                // localStorageに保存（容量エラーを回避）
+                try {
+                    localStorage.setItem(key, JSON.stringify(cached));
+                } catch (e) {
+                    console.warn('localStorage save failed:', e);
+                    this.cleanupLocalStorage();
+                }
+            }
+            
+            // キャッシュが有効期限内か確認
+            isValid(cached, type) {
+                const ttl = this.TTL[type] || this.TTL.suggestions;
+                return Date.now() - cached.timestamp < ttl;
+            }
+            
+            // キャッシュが古くなりかけているか（50%以上経過）
+            isStale(cached, type) {
+                const ttl = this.TTL[type] || this.TTL.suggestions;
+                return Date.now() - cached.timestamp > ttl * 0.5;
+            }
+            
+            // 定期的なクリーンアップ
+            startCleanup() {
+                this.cleanupInterval = setInterval(() => {
+                    this.cleanup();
+                }, 60 * 1000); // 1分ごと
+            }
+            
+            cleanup() {
+                // メモリキャッシュのクリーンアップ
+                for (const [key, value] of this.memoryCache.entries()) {
+                    if (!this.isValid(value, value.type)) {
+                        this.memoryCache.delete(key);
+                    }
+                }
+                
+                // localStorageのクリーンアップ
+                this.cleanupLocalStorage();
+            }
+            
+            cleanupLocalStorage() {
+                const keysToRemove = [];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.startsWith('suggestions:') || key.startsWith('channelInfo:'))) {
+                        try {
+                            const cached = JSON.parse(localStorage.getItem(key));
+                            if (!this.isValid(cached, cached.type)) {
+                                keysToRemove.push(key);
+                            }
+                        } catch (e) {
+                            keysToRemove.push(key);
+                        }
+                    }
+                }
+                keysToRemove.forEach(key => localStorage.removeItem(key));
+            }
+            
+            destroy() {
+                if (this.cleanupInterval) {
+                    clearInterval(this.cleanupInterval);
+                }
+            }
+        }
+        
+        // キャッシュインスタンスを作成
+        const apiCache = new APICache();
+        
+        // ============================================
+        // リクエスト管理
+        // ============================================
+        let currentAbortController = null;
+        let lastQuery = '';
+        let pendingRequests = new Map();
+        
+        // ============================================
+        // メイン処理
+        // ============================================
         // config.jsの読み込みを待つ
         async function loadConfig() {
             if (typeof CONFIG !== 'undefined') {
@@ -317,29 +461,121 @@
         let selectedSuggestionIndex = -1;
         let suggestions = [];
         
-        // サジェストを表示
+        // サジェストを表示（キャッシュ対応版）
         async function showSuggestions(query) {
             const suggestionsContainer = document.getElementById('suggestionsContainer');
             
-            if (!query || query.length < 2) {
+            // 3文字未満または空の場合はAPIを呼ばない
+            if (!query || query.length < 3) {
                 suggestionsContainer.classList.remove('show');
                 suggestionsContainer.innerHTML = '';
                 suggestions = [];
                 selectedSuggestionIndex = -1;
+                lastQuery = '';
                 return;
             }
+            
+            // 同一クエリの連続リクエストを防ぐ
+            if (query === lastQuery) {
+                return;
+            }
+            lastQuery = query;
             
             // @を含む場合は削除
             const cleanQuery = query.startsWith('@') ? query.substring(1) : query;
             
-            // YouTube APIでチャンネルを検索
-            const results = await youtubeAPI.searchChannels(cleanQuery, 5);
+            // 前のリクエストをキャンセル
+            if (currentAbortController) {
+                currentAbortController.abort();
+            }
+            currentAbortController = new AbortController();
+            
+            // キャッシュを確認
+            const cacheParams = { query: cleanQuery, maxResults: 5 };
+            const cached = apiCache.get('suggestions', cacheParams);
+            
+            // キャッシュがあれば即座に表示
+            if (cached && cached.data) {
+                displaySuggestions(cached.data);
+                
+                // データが古い場合は裏で更新（SWR: stale-while-revalidate）
+                if (cached.stale) {
+                    console.log('Cache is stale, refreshing in background...');
+                    fetchAndUpdateSuggestions(cleanQuery, cacheParams, false);
+                }
+            } else {
+                // キャッシュがない場合は新規取得
+                await fetchAndUpdateSuggestions(cleanQuery, cacheParams, true);
+            }
+        }
+        
+        // サジェストデータを取得して更新
+        async function fetchAndUpdateSuggestions(cleanQuery, cacheParams, updateUI = true) {
+            // 既に同じリクエストが処理中の場合はスキップ
+            const requestKey = JSON.stringify(cacheParams);
+            if (pendingRequests.has(requestKey)) {
+                return;
+            }
+            
+            pendingRequests.set(requestKey, true);
+            
+            try {
+                // APIリクエスト（AbortController対応）
+                const results = await fetchWithAbort(
+                    () => youtubeAPI.searchChannels(cleanQuery, 5),
+                    currentAbortController.signal
+                );
+                
+                if (results && results.length >= 0) {
+                    // キャッシュに保存
+                    apiCache.set('suggestions', cacheParams, results);
+                    
+                    // UIを更新（必要な場合のみ）
+                    if (updateUI && lastQuery === cacheParams.query) {
+                        displaySuggestions(results);
+                    }
+                }
+            } catch (error) {
+                if (error.name !== 'AbortError') {
+                    console.error('Failed to fetch suggestions:', error);
+                }
+            } finally {
+                pendingRequests.delete(requestKey);
+            }
+        }
+        
+        // AbortController対応のfetchラッパー
+        async function fetchWithAbort(fetchFn, signal) {
+            return new Promise(async (resolve, reject) => {
+                const abortHandler = () => reject(new DOMException('Aborted', 'AbortError'));
+                
+                if (signal.aborted) {
+                    abortHandler();
+                    return;
+                }
+                
+                signal.addEventListener('abort', abortHandler);
+                
+                try {
+                    const result = await fetchFn();
+                    signal.removeEventListener('abort', abortHandler);
+                    resolve(result);
+                } catch (error) {
+                    signal.removeEventListener('abort', abortHandler);
+                    reject(error);
+                }
+            });
+        }
+        
+        // サジェストを表示
+        function displaySuggestions(results) {
+            const suggestionsContainer = document.getElementById('suggestionsContainer');
             suggestions = results;
             
             if (results.length > 0) {
                 suggestionsContainer.innerHTML = results.map((channel, index) => `
                     <div class="suggestion-item" data-index="${index}" data-channel-id="${channel.id}">
-                        <img src="${channel.thumbnail}" alt="${channel.title}" class="suggestion-avatar">
+                        <img src="${channel.thumbnail}" alt="${channel.title}" class="suggestion-avatar" onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiNFMEUwRTAiLz4KPHBhdGggZD0iTTIwIDIyQzIyLjc2MTQgMjIgMjUgMTkuNzYxNCAyNSAxN0MyNSAxNC4yMzg2IDIyLjc2MTQgMTIgMjAgMTJDMTcuMjM4NiAxMiAxNSAxNC4yMzg2IDE1IDE3QzE1IDE5Ljc2MTQgMTcuMjM4NiAyMiAyMCAyMloiIGZpbGw9IiM5RTlFOUUiLz4KPHBhdGggZD0iTTEwIDMwQzEwIDI3IDEzIDI0IDIwIDI0QzI3IDI0IDMwIDI3IDMwIDMwIiBmaWxsPSIjOUU5RTlFIi8+Cjwvc3ZnPg=='">
                         <div class="suggestion-info">
                             <div class="suggestion-title">${channel.title}</div>
                             <div class="suggestion-handle">${channel.handle ? channel.handle : '@' + channel.title.toLowerCase().replace(/\s+/g, '')}</div>
