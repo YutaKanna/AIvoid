@@ -20,29 +20,14 @@ class PerspectiveAPI {
 
     // コメントを分析
     async analyzeComment(text) {
-        const apiKey = this.getAPIKey();
-        if (!apiKey) {
-            console.warn('Perspective API key not set, returning default safe score');
-            return { isToxic: false, scores: {} };
-        }
-
+        // サーバー側のプロキシAPIを使用
         try {
-            const response = await fetch(`${this.baseURL}/comments:analyze?key=${apiKey}`, {
+            const response = await fetch('/api/perspective/analyze', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    comment: { text },
-                    requestedAttributes: {
-                        TOXICITY: {},
-                        SEVERE_TOXICITY: {},
-                        INSULT: {},
-                        THREAT: {},
-                        IDENTITY_ATTACK: {}
-                        // OBSCENEは日本語に対応していないため除外
-                    }
-                })
+                body: JSON.stringify({ text })
             });
 
             if (!response.ok) {
@@ -52,16 +37,7 @@ class PerspectiveAPI {
                     statusText: response.statusText,
                     error: errorData,
                     url: response.url,
-                    requestBody: {
-                        comment: { text },
-                        requestedAttributes: {
-                            TOXICITY: {},
-                            SEVERE_TOXICITY: {},
-                            INSULT: {},
-                            THREAT: {},
-                            IDENTITY_ATTACK: {}
-                        }
-                    }
+                    requestBody: { text }
                 });
                 
                 // より詳細なエラーメッセージ
@@ -86,11 +62,11 @@ class PerspectiveAPI {
             
             // 毒性判定（日本語の場合はより低い閾値を使用）
             const thresholds = isJapanese ? {
-                TOXICITY: 0.08,
-                SEVERE_TOXICITY: 0.2,
-                INSULT: 0.08,
-                THREAT: 0.2,
-                IDENTITY_ATTACK: 0.2
+                TOXICITY: 0.1,
+                SEVERE_TOXICITY: 0.1,
+                INSULT: 0.1,
+                THREAT: 0.1,
+                IDENTITY_ATTACK: 0.1
             } : {
                 TOXICITY: 0.5,
                 SEVERE_TOXICITY: 0.4,

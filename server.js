@@ -59,6 +59,79 @@ app.get('/api/config', (req, res) => {
     });
 });
 
+// JSONボディパーサー（Perspective API用）
+app.use(express.json());
+
+// Perspective APIプロキシ
+app.post('/api/perspective/analyze', async (req, res) => {
+    const https = require('https');
+    
+    if (!process.env.PERSPECTIVE_API_KEY) {
+        console.error('Perspective API key not configured in environment variables');
+        return res.status(500).json({ error: 'Perspective API key not configured' });
+    }
+    
+    const { text } = req.body;
+    if (!text) {
+        return res.status(400).json({ error: 'Text is required' });
+    }
+    
+    console.log('Perspective API request for text:', text.substring(0, 50) + '...');
+    
+    const postData = JSON.stringify({
+        comment: { text },
+        requestedAttributes: {
+            TOXICITY: {},
+            SEVERE_TOXICITY: {},
+            INSULT: {},
+            THREAT: {},
+            IDENTITY_ATTACK: {}
+        }
+    });
+    
+    const options = {
+        hostname: 'commentanalyzer.googleapis.com',
+        path: `/v1alpha1/comments:analyze?key=${process.env.PERSPECTIVE_API_KEY}`,
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(postData)
+        }
+    };
+    
+    const apiReq = https.request(options, (apiRes) => {
+        let data = '';
+        apiRes.on('data', chunk => data += chunk);
+        apiRes.on('end', () => {
+            try {
+                const result = JSON.parse(data);
+                if (apiRes.statusCode !== 200) {
+                    console.error('Perspective API error:', {
+                        status: apiRes.statusCode,
+                        error: result,
+                        apiKey: process.env.PERSPECTIVE_API_KEY ? 'Set (length: ' + process.env.PERSPECTIVE_API_KEY.length + ')' : 'Not set'
+                    });
+                    res.status(apiRes.statusCode).json(result);
+                } else {
+                    console.log('Perspective API success for text length:', text.length);
+                    res.json(result);
+                }
+            } catch (e) {
+                console.error('Failed to parse Perspective API response:', e);
+                res.status(500).json({ error: 'Invalid JSON response from Perspective API' });
+            }
+        });
+    });
+    
+    apiReq.on('error', (error) => {
+        console.error('Perspective API request error:', error);
+        res.status(500).json({ error: 'Failed to connect to Perspective API' });
+    });
+    
+    apiReq.write(postData);
+    apiReq.end();
+});
+
 // YouTube APIプロキシ
 app.get('/api/youtube/*', async (req, res) => {
     const apiPath = req.params[0];

@@ -105,11 +105,11 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         try {
-            // YouTube APIでコメントを取得
+            // YouTube APIでコメントを取得（テスト用：1件のみ）
             const result = await youtubeAPI.getVideoComments(
                 currentVideoId, 
                 append ? nextPageToken : null, 
-                20
+                1  // 1件のみ取得
             );
             
             nextPageToken = result.nextPageToken;
@@ -130,17 +130,8 @@ document.addEventListener('DOMContentLoaded', function() {
             let commentsToAnalyze = !append ? result.comments : 
                 result.comments.filter(c => !allComments.slice(0, -result.comments.length).some(existing => existing.id === c.id));
             
-            if (quickLoad && !append && commentsToAnalyze.length > 2) {
-                // 最初の2件を即座に処理
-                const firstBatch = commentsToAnalyze.slice(0, 2);
-                pendingComments = commentsToAnalyze.slice(2);
-                commentsToAnalyze = firstBatch;
-                
-                console.log(`Quick loading: Processing first ${firstBatch.length} comments, ${pendingComments.length} pending`);
-                
-                // プログレス表示
-                showProgressIndicator(firstBatch.length, result.comments.length);
-            }
+            // クイックロード処理を無効化（1件のみなので不要）
+            pendingComments = [];
             
             const filteredComments = await filterComments(commentsToAnalyze);
             
@@ -237,19 +228,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // コメントをフィルタリング
     async function filterComments(comments) {
-        const perspectiveKey = perspectiveAPI.getAPIKey();
-        
-        if (!perspectiveKey) {
-            console.warn('Perspective API key not found, treating all comments as safe');
-            // Perspective APIキーがない場合は全て安全と判定
-            return {
-                safe: comments,
-                toxic: [],
-                analysis: {}
-            };
-        }
-        
-        console.log('Using Perspective API for comment filtering');
+        // サーバー側のプロキシAPIを使用するため、キーチェックは不要
+        console.log('Using Perspective API for comment filtering via server proxy');
         
         const safe = [];
         const toxic = [];
@@ -277,9 +257,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             } catch (error) {
                 console.error(`Error analyzing comment "${comment.textOriginal}":`, error);
-                // エラーの場合は安全として扱う
-                safe.push(comment);
-                analysis[comment.id] = { isToxic: false, scores: {}, error: error.message };
+                // APIキーエラーの場合は特別な処理
+                if (error.message && error.message.includes('API key not valid')) {
+                    console.warn('Perspective API key is invalid. Treating all comments as safe.');
+                    // 残りのコメントも全て安全として扱う
+                    safe.push(comment);
+                    analysis[comment.id] = { isToxic: false, scores: {}, error: 'Invalid API key' };
+                } else {
+                    // その他のエラーの場合は安全として扱う
+                    safe.push(comment);
+                    analysis[comment.id] = { isToxic: false, scores: {}, error: error.message };
+                }
             }
         }
         
