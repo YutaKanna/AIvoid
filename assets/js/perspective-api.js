@@ -63,20 +63,17 @@ class PerspectiveAPI {
             // 毒性判定（日本語の場合はより低い閾値を使用）
             const thresholds = isJapanese ? {
                 TOXICITY: 0.1,
-                SEVERE_TOXICITY: 0.1,
                 INSULT: 0.1,
                 THREAT: 0.1,
                 IDENTITY_ATTACK: 0.1
             } : {
                 TOXICITY: 0.5,
-                SEVERE_TOXICITY: 0.4,
                 INSULT: 0.5,
                 THREAT: 0.5,
                 IDENTITY_ATTACK: 0.5
             };
             
             const isToxic = scores.TOXICITY > thresholds.TOXICITY || 
-                          scores.SEVERE_TOXICITY > thresholds.SEVERE_TOXICITY ||
                           scores.INSULT > thresholds.INSULT ||
                           scores.THREAT > thresholds.THREAT ||
                           scores.IDENTITY_ATTACK > thresholds.IDENTITY_ATTACK;

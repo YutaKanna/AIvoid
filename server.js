@@ -82,7 +82,6 @@ app.post('/api/perspective/analyze', async (req, res) => {
         comment: { text },
         requestedAttributes: {
             TOXICITY: {},
-            SEVERE_TOXICITY: {},
             INSULT: {},
             THREAT: {},
             IDENTITY_ATTACK: {}
