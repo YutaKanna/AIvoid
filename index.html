@@ -27,13 +27,21 @@
         
         .channel-form-container {
             display: flex;
+            flex-direction: column;
             align-items: center;
             width: 100%;
             max-width: 300px;
             position: relative;
-            height: 50px;
             opacity: 0;
             transition: opacity 0.5s ease-in-out;
+        }
+        
+        .input-wrapper {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            height: 50px;
+            position: relative;
         }
         
         .channel-form-container.show {
@@ -136,6 +144,80 @@
                 transform: rotate(360deg);
             }
         }
+        
+        .suggestions-container {
+            width: 100%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+            margin-top: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .suggestions-container.show {
+            display: block;
+        }
+        
+        .suggestion-item {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        
+        .suggestion-item:hover {
+            background-color: #f5f5f5;
+        }
+        
+        .suggestion-item.selected {
+            background-color: #e8f0fe;
+        }
+        
+        .suggestion-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 12px;
+            background-color: #ddd;
+            flex-shrink: 0;
+        }
+        
+        .suggestion-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .suggestion-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .suggestion-handle {
+            font-size: 12px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .suggestion-subscribers {
+            font-size: 11px;
+            color: #999;
+            white-space: nowrap;
+        }
     </style>
 </head>
 <body>
@@ -152,18 +234,21 @@
         <div class="splash-container">
             <h1 class="splash-logo">AIvoid</h1>
             <div class="channel-form-container" id="channelForm">
-                <input type="text" 
-                       id="channelInput" 
-                       class="channel-input" 
-                       placeholder="@soshina または https://youtube.com/@soshina" 
-                       autocomplete="off"
-                       required>
-                <button id="channelSubmit" class="channel-submit-btn" type="submit">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                        <path d="M12 5L19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                    </svg>
-                </button>
+                <div class="input-wrapper">
+                    <input type="text" 
+                           id="channelInput" 
+                           class="channel-input" 
+                           placeholder="@soshina または https://youtube.com/@soshina" 
+                           autocomplete="off"
+                           required>
+                    <button id="channelSubmit" class="channel-submit-btn" type="submit">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 12H19" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                            <path d="M12 5L19 12L12 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                <div id="suggestionsContainer" class="suggestions-container"></div>
                 <div id="errorMessage" class="error-message"></div>
             </div>
         </div>
@@ -227,6 +312,89 @@
             }, 3000);
         }
         
+        // サジェスト機能の変数
+        let searchTimeout = null;
+        let selectedSuggestionIndex = -1;
+        let suggestions = [];
+        
+        // サジェストを表示
+        async function showSuggestions(query) {
+            const suggestionsContainer = document.getElementById('suggestionsContainer');
+            
+            if (!query || query.length < 2) {
+                suggestionsContainer.classList.remove('show');
+                suggestionsContainer.innerHTML = '';
+                suggestions = [];
+                selectedSuggestionIndex = -1;
+                return;
+            }
+            
+            // @を含む場合は削除
+            const cleanQuery = query.startsWith('@') ? query.substring(1) : query;
+            
+            // YouTube APIでチャンネルを検索
+            const results = await youtubeAPI.searchChannels(cleanQuery, 5);
+            suggestions = results;
+            
+            if (results.length > 0) {
+                suggestionsContainer.innerHTML = results.map((channel, index) => `
+                    <div class="suggestion-item" data-index="${index}" data-channel-id="${channel.id}">
+                        <img src="${channel.thumbnail}" alt="${channel.title}" class="suggestion-avatar">
+                        <div class="suggestion-info">
+                            <div class="suggestion-title">${channel.title}</div>
+                            <div class="suggestion-handle">${channel.handle ? channel.handle : '@' + channel.title.toLowerCase().replace(/\s+/g, '')}</div>
+                            ${channel.subscriberCount ? `<div class="suggestion-subscribers">チャンネル登録者数 ${channel.subscriberCount}人</div>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+                
+                suggestionsContainer.classList.add('show');
+                
+                // サジェストアイテムのクリックイベント
+                const suggestionItems = suggestionsContainer.querySelectorAll('.suggestion-item');
+                suggestionItems.forEach(item => {
+                    item.addEventListener('click', function() {
+                        const channelId = this.getAttribute('data-channel-id');
+                        selectSuggestion(channelId);
+                    });
+                });
+            } else {
+                suggestionsContainer.classList.remove('show');
+                suggestionsContainer.innerHTML = '';
+            }
+        }
+        
+        // サジェストを選択
+        function selectSuggestion(channelId) {
+            const suggestionsContainer = document.getElementById('suggestionsContainer');
+            suggestionsContainer.classList.remove('show');
+            window.location.href = 'home.html?channel=' + encodeURIComponent(channelId);
+        }
+        
+        // キーボードナビゲーション
+        function navigateSuggestions(direction) {
+            const suggestionsContainer = document.getElementById('suggestionsContainer');
+            const items = suggestionsContainer.querySelectorAll('.suggestion-item');
+            
+            if (items.length === 0) return;
+            
+            // 以前の選択をクリア
+            if (selectedSuggestionIndex >= 0 && selectedSuggestionIndex < items.length) {
+                items[selectedSuggestionIndex].classList.remove('selected');
+            }
+            
+            // インデックスを更新
+            if (direction === 'up') {
+                selectedSuggestionIndex = selectedSuggestionIndex <= 0 ? items.length - 1 : selectedSuggestionIndex - 1;
+            } else {
+                selectedSuggestionIndex = selectedSuggestionIndex >= items.length - 1 ? 0 : selectedSuggestionIndex + 1;
+            }
+            
+            // 新しい選択を適用
+            items[selectedSuggestionIndex].classList.add('selected');
+            items[selectedSuggestionIndex].scrollIntoView({ block: 'nearest' });
+        }
+        
         // ロゴアニメーション後にフォームを表示
         setTimeout(async function() {
             // config.jsの読み込みを確認
@@ -238,6 +406,53 @@
             // フォーム送信処理
             const channelInput = document.getElementById('channelInput');
             const submitBtn = document.getElementById('channelSubmit');
+            const suggestionsContainer = document.getElementById('suggestionsContainer');
+            
+            // 入力イベント（サジェスト表示）
+            channelInput.addEventListener('input', function(e) {
+                const query = e.target.value.trim();
+                
+                // タイマーをクリア
+                if (searchTimeout) {
+                    clearTimeout(searchTimeout);
+                }
+                
+                // 遅延検索
+                searchTimeout = setTimeout(() => {
+                    showSuggestions(query);
+                }, 300);
+            });
+            
+            // キーボードイベント
+            channelInput.addEventListener('keydown', function(e) {
+                const suggestionsVisible = suggestionsContainer.classList.contains('show');
+                
+                if (suggestionsVisible) {
+                    if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        navigateSuggestions('down');
+                    } else if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        navigateSuggestions('up');
+                    } else if (e.key === 'Enter' && selectedSuggestionIndex >= 0) {
+                        e.preventDefault();
+                        const channelId = suggestions[selectedSuggestionIndex].id;
+                        selectSuggestion(channelId);
+                    } else if (e.key === 'Escape') {
+                        suggestionsContainer.classList.remove('show');
+                        selectedSuggestionIndex = -1;
+                    }
+                }
+            });
+            
+            // フォーカスアウトでサジェストを非表示（遅延）
+            channelInput.addEventListener('blur', function() {
+                setTimeout(() => {
+                    const suggestionsContainer = document.getElementById('suggestionsContainer');
+                    suggestionsContainer.classList.remove('show');
+                    selectedSuggestionIndex = -1;
+                }, 200);
+            });
             
             async function submitChannel() {
                 const inputValue = channelInput.value.trim();
@@ -273,7 +488,7 @@
             
             submitBtn.addEventListener('click', submitChannel);
             channelInput.addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && selectedSuggestionIndex === -1) {
                     submitChannel();
                 }
             });

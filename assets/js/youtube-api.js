@@ -39,6 +39,63 @@ class YouTubeAPI {
         }
     }
 
+    // チャンネルをキーワードで検索（サジェスト用）
+    async searchChannels(query, maxResults = 5) {
+        try {
+            const searchUrl = `/api/youtube/search?part=snippet&type=channel&q=${encodeURIComponent(query)}&maxResults=${maxResults}`;
+            
+            const response = await fetch(searchUrl);
+            
+            if (!response.ok) {
+                console.error('Search API failed:', response.status);
+                return [];
+            }
+            
+            const data = await response.json();
+            
+            if (data.error) {
+                console.error('YouTube API Error:', data.error);
+                return [];
+            }
+            
+            if (data.items && data.items.length > 0) {
+                // チャンネルIDのリストを作成
+                const channelIds = data.items.map(item => item.snippet.channelId).join(',');
+                
+                // チャンネルの詳細情報を取得
+                const detailsUrl = `/api/youtube/channels?part=snippet,statistics&id=${channelIds}`;
+                const detailsResponse = await fetch(detailsUrl);
+                
+                if (!detailsResponse.ok) {
+                    return data.items.map(item => ({
+                        id: item.snippet.channelId,
+                        title: item.snippet.title,
+                        handle: item.snippet.customUrl || '',
+                        thumbnail: item.snippet.thumbnails.default?.url,
+                        subscriberCount: null
+                    }));
+                }
+                
+                const detailsData = await detailsResponse.json();
+                
+                if (detailsData.items) {
+                    return detailsData.items.map(channel => ({
+                        id: channel.id,
+                        title: channel.snippet.title,
+                        handle: channel.snippet.customUrl || '',
+                        thumbnail: channel.snippet.thumbnails.default?.url,
+                        subscriberCount: this.formatNumber(channel.statistics.subscriberCount)
+                    }));
+                }
+            }
+            
+            return [];
+        } catch (error) {
+            console.error('Error searching channels:', error);
+            return [];
+        }
+    }
+
     // チャンネル情報を取得（IDまたはハンドル名で）
     async getChannelInfo(channelIdOrHandle = CONFIG.DEFAULT_CHANNEL_ID) {
         try {
